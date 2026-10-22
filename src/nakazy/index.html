@@ -1,0 +1,1602 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Реєстр наказів</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1d2330; --muted: #6b7385; --line: #e3e6ec;
+    --accent: #2f5bea; --accent-d: #2248c4; --danger: #c93a3a; --ok: #1f8a4c; --warn-bg:#fff6dd; --warn:#7a5b00;
+    --chip-main: #e6edff; --chip-hr: #e5f6ec; --mark:#ffe08a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14171e; --card:#1c212b; --text:#e8ebf2; --muted:#9aa3b5; --line:#2b3240;
+      --accent:#6b8cff; --accent-d:#8aa4ff; --danger:#ff7b7b; --ok:#5fd18d; --warn-bg:#3a3217; --warn:#f2d77a;
+      --chip-main:#243056; --chip-hr:#1d3a2a; --mark:#7a6000; }
+  }
+  * { box-sizing: border-box; }
+  html, body { height:100%; }
+  [hidden] { display: none !important; }
+  body { margin:0; font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text);
+    display:flex; flex-direction:column; overflow:hidden; }
+  header, .banner { flex:none; }
+  header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    padding:14px 24px; background:var(--card); border-bottom:1px solid var(--line); }
+  h1 { margin:0; font-size:18px; line-height:1.35; font-weight:650; flex:1 1 320px; min-width:0; }
+  .hright { display:flex; gap:8px; align-items:center; flex-wrap:wrap; flex:0 0 auto; }
+  .regtabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+  .rtab { border:1px solid var(--line); background:var(--card); border-radius:99px; padding:7px 16px; cursor:pointer; font-weight:600; color:var(--muted); }
+  .rtab:hover { border-color:var(--accent); color:var(--text); }
+  .rtab.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  main { flex:1 1 auto; min-height:0; display:flex; flex-direction:row; gap:16px; width:100%; max-width:none; margin:0 auto; padding:16px 24px 18px; }
+  #listPane { flex:1 1 0; min-width:0; min-height:0; display:flex; flex-direction:column; }
+  main.split #listPane { flex:2 1 0; }
+  #listPane > .regtabs, #listPane > .filters { flex:none; }
+  #preview { display:none; flex:1 1 0; min-width:0; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  main.split #preview { display:flex; }
+  .pv-head { display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line); }
+  .pv-title { flex:1; min-width:0; font-weight:600; font-size:14px; line-height:1.3; }
+  .pv-title small { display:block; color:var(--muted); font-weight:400; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pv-body { position:relative; flex:1 1 auto; min-height:0; }
+  #pvMsg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; text-align:center; color:var(--muted); }
+  #pvFrame { position:absolute; inset:0; width:100%; height:100%; border:0; background:#fff; opacity:0; }
+  #pvFrame.ready { opacity:1; }
+  #rows tr.viewing td { background:color-mix(in srgb, var(--accent) 12%, transparent); }
+  button, input, select, textarea { font:inherit; color:inherit; }
+  .btn { border:1px solid var(--line); background:var(--card); border-radius:8px; padding:8px 14px; cursor:pointer; }
+  .btn:hover { border-color:var(--accent); }
+  a.btn { text-decoration:none; color:inherit; display:inline-block; }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  .btn.primary:hover { background:var(--accent-d); }
+  .btn.danger { color:var(--danger); }
+  .btn.small { padding:4px 10px; font-size:13px; }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .menu { position:relative; }
+  .menu > summary { list-style:none; cursor:pointer; user-select:none; }
+  .menu > summary::-webkit-details-marker { display:none; }
+  .menu-list { position:absolute; right:0; top:calc(100% + 6px); background:var(--card); border:1px solid var(--line);
+    border-radius:10px; min-width:210px; padding:6px; z-index:30; box-shadow:0 10px 30px rgba(0,0,0,.18); }
+  .menu-list button { display:block; width:100%; text-align:left; border:0; background:none; padding:8px 10px; border-radius:6px; cursor:pointer; }
+  .menu-list button:hover { background:color-mix(in srgb, var(--accent) 10%, transparent); }
+  .who { color:var(--muted); font-size:13px; }
+  .banner { background:var(--warn-bg); color:var(--warn); padding:10px 24px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  input, select, textarea { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 10px; width:100%; }
+  input[type=checkbox] { width:auto; }
+  input:focus, select:focus, textarea:focus { outline:2px solid color-mix(in srgb, var(--accent) 45%, transparent); border-color:var(--accent); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:auto; flex:0 1 auto; min-height:0; }
+  table { width:100%; border-collapse:collapse; table-layout:fixed; }
+  td { overflow-wrap:anywhere; }
+  table.t-main { min-width:980px; }
+  main.split table.t-main { min-width:880px; }
+  th { position:sticky; top:0; z-index:2; box-shadow:inset 0 -1px 0 var(--line); text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted);
+    padding:10px 14px; border-bottom:1px solid var(--line); background:color-mix(in srgb, var(--bg) 60%, var(--card)); white-space:nowrap; }
+  td { padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td { border-bottom:0; }
+  #rows tr { cursor:pointer; } #rows tr.ro { cursor:default; }
+  #rows tr:hover { background:color-mix(in srgb, var(--accent) 6%, transparent); }
+  .num { font-weight:650; white-space:nowrap; }
+  .date { white-space:nowrap; color:var(--muted); }
+  .chip { display:inline-block; padding:2px 9px; border-radius:99px; font-size:12px; font-weight:600; white-space:nowrap; }
+  .chip.main { background:var(--chip-main); } .chip.hr { background:var(--chip-hr); }
+  .reserved td:not(.act) { color:var(--muted); }
+  .badge-res { background:var(--warn-bg); color:var(--warn); font-size:12px; font-weight:700; border-radius:99px; padding:1px 9px; margin-left:6px; white-space:nowrap; }
+  .empty { padding:50px 20px; text-align:center; color:var(--muted); }
+  .count { color:var(--muted); font-size:13px; margin:0 2px 0 auto; }
+  .clip { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:10px;
+    color:var(--accent); text-decoration:none; }
+  .ficons { display:flex; flex-wrap:wrap; gap:2px; justify-content:center; }
+  .ficon { display:inline-flex; width:28px; height:34px; border-radius:4px; }
+  .ficon:hover { transform:translateY(-1px); filter:brightness(1.08); }
+  .ficon svg { display:block; }
+  .ficon.on { outline:2px solid var(--accent); outline-offset:1px; }
+  .pv-tabs { display:flex; gap:6px; flex-wrap:wrap; padding:8px 12px; border-bottom:1px solid var(--line); }
+  .pv-tabs button { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:3px 10px 3px 4px; cursor:pointer; max-width:100%; }
+  .pv-tabs button.on { border-color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, transparent); }
+  .pv-tabs span.n { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px; font-size:13px; }
+  .filelist { display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
+  .fitem { display:flex; align-items:center; gap:8px; }
+  .fitem a { color:inherit; text-decoration:none; display:flex; align-items:center; gap:8px; min-width:0; }
+  .fitem a:hover .n { text-decoration:underline; }
+  .fitem .n { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fitem.gone { opacity:.45; text-decoration:line-through; }
+  .clip:hover { background:color-mix(in srgb, var(--accent) 14%, transparent); }
+  .clip svg { display:block; }
+  td.act { text-align:center; padding:2px 4px; }
+  th.sortable { cursor:pointer; user-select:none; }
+  th.sortable:hover { color:var(--text); }
+  th.sorted { color:var(--accent); }
+  .hbtn { display:inline-flex; align-items:center; gap:6px; } .hbtn .hico { color:var(--accent); flex:none; }
+  th .arr { display:inline-block; width:14px; margin-left:4px; font-size:10px; }
+  th.w-num { width:110px; } th.w-date { width:120px; }
+  th.w-creators { width:200px; } th.w-signer { width:200px; }
+  th.w-file { width:104px; text-align:center; padding:10px 2px; font-size:11px; letter-spacing:0; } th.w-file .arr { width:12px; margin-left:2px; }
+  .filters { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; align-items:center; }
+  .filters input[type=search] { flex:1 1 240px; min-width:140px; }
+  main.split .filters input#q { flex:1 1 130px; min-width:110px; }
+  main.split .filters { gap:8px; }
+  .filters input#qnum { flex:0 0 110px; min-width:0; width:110px; }
+  .filters select { width:auto; max-width:260px; }
+  .muted { color:var(--muted); }
+  dialog { border:0; border-radius:14px; padding:0; width:min(680px, 94vw); background:var(--card); color:var(--text); box-shadow:0 20px 60px rgba(0,0,0,.3); }
+  dialog.wide { width:min(1280px, 96vw); }
+  dialog.narrow { width:min(420px, 94vw); }
+  #dlgXlsx a { color:var(--accent); text-decoration:none; } #dlgXlsx a:hover { text-decoration:underline; }
+  .xmonths { display:grid; grid-template-columns:repeat(3, 1fr); gap:4px 10px; }
+  .xmonths label { display:flex; align-items:center; gap:6px; font-weight:400; margin:0; cursor:pointer; }
+  .xmonths input { width:auto; margin:0; }
+  dialog::backdrop { background:rgba(10,14,25,.55); }
+  .dlg-head { padding:16px 22px; border-bottom:1px solid var(--line); font-weight:650; font-size:17px; }
+  .dlg-body { padding:18px 22px; display:grid; grid-template-columns:1fr 1fr; gap:14px; max-height:72vh; overflow:auto; }
+  .dlg-body.one { grid-template-columns:1fr; }
+  .dlg-body .full { grid-column:1 / -1; }
+  label { display:block; font-size:13px; color:var(--muted); margin-bottom:4px; }
+  .dlg-foot { padding:14px 22px; border-top:1px solid var(--line); display:flex; gap:10px; align-items:center; }
+  .dlg-foot .spacer { flex:1; }
+  .hint { font-size:12px; color:var(--muted); margin-top:3px; }
+  .err { color:var(--danger); font-size:13px; padding:0 22px 10px; }
+  .filebox { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  #toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:#222a3a; color:#fff;
+    padding:10px 18px; border-radius:10px; opacity:0; pointer-events:none; transition:opacity .25s; z-index:50; max-width:90vw; }
+  #toast.show { opacity:1; }
+  /* мультивибір «Хто створив» */
+  .ms { position:relative; display:flex; flex-wrap:wrap; gap:6px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:6px; background:var(--card); }
+  .ms:focus-within { outline:2px solid color-mix(in srgb, var(--accent) 45%, transparent); border-color:var(--accent); }
+  .ms input { border:0; outline:0 !important; flex:1 1 140px; min-width:120px; padding:4px 6px; background:transparent; }
+  .ms.ro { background:transparent; border-color:transparent; padding-left:0; }
+  .tag { display:inline-flex; gap:6px; align-items:center; background:var(--chip-main); border-radius:99px; padding:2px 6px 2px 10px; font-size:13px; }
+  .tag button { border:0; background:none; cursor:pointer; padding:0 2px; font-size:15px; line-height:1; color:var(--muted); }
+  .ms-list { position:absolute; left:0; right:0; top:calc(100% + 4px); background:var(--card); border:1px solid var(--line); border-radius:8px;
+    max-height:220px; overflow:auto; z-index:20; box-shadow:0 10px 30px rgba(0,0,0,.2); }
+  .ms-list div { padding:8px 12px; cursor:pointer; }
+  .ms-list div:hover { background:color-mix(in srgb, var(--accent) 10%, transparent); }
+  .ms-list .none { color:var(--muted); cursor:default; }
+  /* довідники */
+  .tabs { display:flex; gap:6px; padding:12px 22px 0; border-bottom:1px solid var(--line); }
+  .tab { border:0; background:none; padding:8px 14px; cursor:pointer; border-bottom:2px solid transparent; color:var(--muted); font-weight:600; }
+  .tab.on { color:var(--accent); border-bottom-color:var(--accent); }
+  .dir-wrap { padding:14px 22px; max-height:66vh; overflow:auto; }
+  .dir td, .dir th { padding:7px 8px; }
+  .dir input[type=text], .dir input[type=password] { padding:6px 8px; }
+  .dir td.c { text-align:center; }
+  .dir input[data-f="name"] { width:100%; }
+  .dir:has(input[data-f="name"]) th:first-child { width:300px; }   /* стовпець ПІП — широкий */
+  .dir:has(input[data-f="name"]) th.c { width:88px; }
+  .dir:has(input[data-f="name"]) th:last-child { width:150px; }
+  .dir textarea, .dir select { padding:6px 8px; }
+  .dir textarea { min-width:320px; resize:vertical; }
+  th { text-align:center; }
+  .dir.reg { table-layout:fixed; width:100%; }
+  .dir.reg textarea { min-width:0; width:100%; box-sizing:border-box; }
+  .dir.reg th:nth-child(1) { width:190px; } .dir.reg th:nth-child(3) { width:100px; }
+  .dir.reg th:nth-child(4) { width:125px; } .dir.reg th:nth-child(5) { width:85px; } .dir.reg th:nth-child(6) { width:150px; }
+  .dir.reg td:nth-child(4) { text-align:center; } .dir.reg td:nth-child(5) { text-align:center; }
+  .dir.reg input[data-f="suffix"] { width:100%; box-sizing:border-box; }
+  .helptext h3 { margin:18px 0 6px; font-size:15px; } .helptext h3:first-child { margin-top:0; }
+  .helptext p, .helptext li { line-height:1.5; } .helptext ul { margin:4px 0 8px; padding-left:20px; }
+  .helptext code { background:color-mix(in srgb, var(--accent) 10%, transparent); padding:1px 6px; border-radius:5px; font-size:13px; }
+  .logentry { border-left:3px solid var(--accent); padding:2px 0 2px 14px; margin:0 0 18px; }
+  .logentry h4 { margin:0 0 4px; font-size:15px; } .logentry h4 span { color:var(--muted); font-weight:400; font-size:13px; margin-left:8px; }
+  .dir tr.new td { background:color-mix(in srgb, var(--accent) 7%, transparent); }
+  .dir .row-err { color:var(--danger); font-size:12px; }
+  /* таблиця: номер над датою, зебра, роздільники за місяцями */
+  th.w-nd { width:118px; } th .sortable { cursor:pointer; } th .sortable:hover { color:var(--text); } th .sorted { color:var(--accent); }
+  td.nd .num { font-size:15px; } td.nd .date { font-size:12.5px; margin-top:1px; }
+  #rows tr.zb td { background:color-mix(in srgb, var(--bg) 55%, var(--card)); }
+  #rows tr.msep td { background:var(--card); padding:14px 14px 6px; border-bottom:2px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+    font-weight:650; font-size:13px; color:var(--accent); letter-spacing:.02em; cursor:default; }
+  #rows tr.msep:first-child td { padding-top:8px; }
+  #rows tr.msep span { color:var(--muted); font-weight:400; margin-left:10px; font-size:12px; }
+  #rows tr.msep:hover { background:none; }
+  body.compact #rows tr.msep td { padding:8px 10px 4px; }
+  /* файл, який тягнуть на рядок */
+  #rows tr.dropto td { background:color-mix(in srgb, var(--accent) 16%, transparent) !important; box-shadow:inset 0 2px 0 var(--accent), inset 0 -2px 0 var(--accent); }
+  /* смужка завантаження */
+  #busy { position:fixed; top:0; left:0; right:0; height:3px; z-index:60; pointer-events:none; opacity:0; transition:opacity .2s;
+    background:linear-gradient(90deg, transparent, var(--accent), transparent); background-size:40% 100%; background-repeat:no-repeat; }
+  #busy.on { opacity:1; animation:busy 1.1s ease-in-out infinite; }
+  @keyframes busy { from { background-position:-40% 0; } to { background-position:140% 0; } }
+  /* вікна: плавна поява й закриття */
+  dialog[open] { animation:dlgIn .16s ease-out; }
+  dialog[open]::backdrop { animation:fadeIn .16s ease-out; }
+  dialog.closing { animation:dlgOut .13s ease-in forwards; }
+  dialog.closing::backdrop { animation:fadeOut .13s ease-in forwards; }
+  @keyframes dlgIn { from { opacity:0; transform:translateY(10px) scale(.985); } to { opacity:1; transform:none; } }
+  @keyframes dlgOut { to { opacity:0; transform:translateY(6px) scale(.99); } }
+  @keyframes fadeIn { from { opacity:0; } } @keyframes fadeOut { to { opacity:0; } }
+  @media (prefers-reduced-motion: reduce) { dialog[open], dialog.closing, dialog[open]::backdrop, dialog.closing::backdrop, #busy.on { animation:none; } }
+  /* вікно наказу зі сканом праворуч */
+  #dlg.withpv { width:min(1500px, 97vw); }
+  .dlg-split { display:flex; min-height:0; }
+  .dlg-split > .dlg-body { flex:1 1 auto; }
+  #dlg.withpv .dlg-split > .dlg-body { flex:0 0 600px; max-width:600px; }
+  #opv { display:none; flex:1 1 auto; min-width:0; flex-direction:column; border-left:1px solid var(--line); }
+  #dlg.withpv #opv { display:flex; }
+  .opv-head { display:flex; gap:6px; align-items:center; padding:8px 12px; border-bottom:1px solid var(--line); }
+  #opvTabs { display:flex; gap:6px; flex-wrap:wrap; flex:1; min-width:0; }
+  .opv-head .btn { flex:none; white-space:nowrap; }
+  #opvTabs button { border:1px solid var(--line); background:var(--card); border-radius:8px; padding:3px 10px; cursor:pointer; font-size:13px; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #opvTabs button.on { border-color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, transparent); }
+  #opvBody { position:relative; flex:1 1 auto; min-height:72vh; }
+  #opvMsg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; text-align:center; color:var(--muted); }
+  #opvFrame { position:absolute; inset:0; width:100%; height:100%; border:0; background:#fff; opacity:0; }
+  #opvFrame.ready { opacity:1; }
+  .fitem .pvsel { border:0; background:none; padding:0; cursor:pointer; color:inherit; display:flex; align-items:center; gap:8px; min-width:0; font:inherit; text-align:left; }
+  .fitem .pvsel:hover .n { text-decoration:underline; } .fitem.pvon .n { color:var(--accent); font-weight:600; }
+  @media (max-width:1100px) { #dlg.withpv { width:min(680px, 94vw); } #dlg.withpv .dlg-split > .dlg-body { flex:1 1 auto; max-width:none; } #dlg.withpv #opv { display:none; } }
+  #toast { display:flex; align-items:center; gap:14px; }
+  #toast button { background:none; border:1px solid rgba(255,255,255,.5); color:#fff; border-radius:6px; padding:3px 10px; cursor:pointer; font-weight:600; }
+  #toast.act { pointer-events:auto; }
+  #toast.err { background:#b42318; }
+  .ficon.locked { opacity:.45; filter:grayscale(1); }
+  .bkrow { display:flex; gap:8px; align-items:center; flex-wrap:wrap; } .bkrow input[type=time] { width:auto; padding:5px 8px; }
+  .bklog summary { cursor:pointer; color:var(--accent); font-size:13px; margin-top:6px; }
+  .bklog pre { max-height:220px; overflow:auto; background:color-mix(in srgb, var(--bg) 70%, var(--card)); border:1px solid var(--line); border-radius:8px; padding:8px; font-size:12px; white-space:pre-wrap; margin:6px 0 0; }
+  .radios { display:flex; flex-direction:column; gap:8px; margin:4px 0 8px; }
+  label.radio { display:flex; gap:8px; align-items:flex-start; color:var(--text); font-size:14px; cursor:pointer; margin:0; }
+  label.radio input { margin-top:3px; width:auto; flex:none; }
+  mark { background:var(--mark); color:var(--text); padding:0 1px; border-radius:3px; }
+  .void td:not(.act) { color:var(--muted); }
+  .void .ttl { text-decoration:line-through; text-decoration-color:color-mix(in srgb, var(--muted) 70%, transparent); }
+  .badge-void { background:color-mix(in srgb, var(--danger) 13%, transparent); color:var(--danger); font-size:12px; font-weight:700; border-radius:99px; padding:1px 9px; margin-left:6px; white-space:nowrap; }
+  .lnk { display:block; font-size:12.5px; color:var(--muted); margin-top:3px; }
+  .lnk a, a.go { color:var(--accent); text-decoration:none; cursor:pointer; white-space:nowrap; }
+  .lnk a:hover, a.go:hover { text-decoration:underline; }
+  @keyframes flash { from { background:color-mix(in srgb, #ffcf33 45%, transparent); } to { background:transparent; } }
+  #rows tr.flash td { animation:flash 2.4s ease-out; }
+  /* компактна таблиця */
+  body.compact #rows td { padding:5px 10px; font-size:14px; line-height:1.35; }
+  body.compact th { padding:7px 10px; }
+  body.compact .ficon { width:22px; height:27px; } body.compact .ficon svg { width:22px; height:27px; }
+  body.compact .lnk { margin-top:1px; }
+  /* перетягування файлів у вікно наказу */
+  #fileRow.drag { outline:2px dashed var(--accent); outline-offset:4px; border-radius:8px; background:color-mix(in srgb, var(--accent) 6%, transparent); }
+  .hcount { display:inline-block; min-width:20px; background:var(--danger); color:#fff; border-radius:99px; font-size:11px; font-weight:700; padding:1px 6px; margin-left:6px; line-height:16px; text-align:center; }
+  .linkadd { display:flex; gap:8px; align-items:flex-start; }
+  .linkadd select { width:auto; flex:none; }
+  .lnsearch { position:relative; flex:1; }
+  .lnsearch .ms-list div small { color:var(--muted); }
+  table.alog td { font-size:13px; padding:7px 8px; } table.alog th { padding:8px; }
+  table.alog td.det { white-space:pre-line; }
+  table.alog th:nth-child(1) { width:135px; } table.alog th:nth-child(2) { width:170px; } table.alog th:nth-child(3) { width:150px; } table.alog th:nth-child(4) { width:150px; }
+  .tbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; padding:12px 22px 0; }
+  .tbar input[type=search] { flex:1 1 240px; width:auto; } .tbar select { width:auto; }
+  .chk h3 { margin:16px 0 6px; font-size:15px; } .chk h3:first-child { margin-top:0; }
+  .chk .row { padding:4px 0; }
+  .chk table { table-layout:auto; } .chk table td { padding:6px 8px; font-size:13.5px; }
+  .chk td.num, .chk td.date { width:1%; white-space:nowrap; padding-right:18px; }
+  .ok-msg { color:var(--ok); font-weight:600; padding:20px 0; }
+  @media (max-width:760px) {
+    .dlg-body { grid-template-columns:1fr; }
+    th.hide-s, td.hide-s { display:none; }
+    table.t-main, main.split table.t-main { min-width:0; }
+    main { padding:14px 12px 60px; } header { padding:10px 12px; }
+    html, body { height:auto; } body { display:block; overflow:auto; }
+    main { display:block; } .card { overflow:auto; }
+    main.split #preview { position:fixed; inset:0; z-index:40; border-radius:0; border:0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="pageTitle">Реєстр наказів</h1>
+  <div class="hright" id="hright"></div>
+</header>
+<div class="banner" id="banner" hidden>
+  <span>⚠ Ви користуєтесь початковим паролем. Змініть його, поки систему не відкрито для всіх.</span>
+  <button class="btn small" data-act="pwd">Змінити пароль</button>
+</div>
+
+<main id="main">
+  <section id="listPane">
+  <nav class="regtabs" id="regtabs" hidden></nav>
+  <div class="filters">
+    <input type="search" id="qnum" placeholder="№ наказу" title="Номер наказу. Цифри (наприклад 1) — точний номер: знайде 1 і 1-к, але не 11 чи 21." autofocus>
+    <input type="search" id="q" placeholder="Пошук у назві…" title="Пошук за словами в назві наказу">
+    <select id="fMonth" title="Місяць"></select>
+    <select id="fYear" title="Рік"><option value="">Усі роки</option></select>
+    <select id="fCreator" title="Хто створив"></select>
+    <select id="fStatus" title="Статус"></select>
+    <button type="button" class="btn" id="btnReset">Скинути фільтри</button>
+    <span class="count" id="count"></span>
+    <button type="button" class="btn small" id="btnDensity" title="Перемкнути щільність таблиці"></button>
+  </div>
+  <div class="card">
+    <table>
+<thead id="thead"></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>Наказів не знайдено</div>
+    <div id="more" style="height:1px"></div>
+  </div>
+  </section>
+  <aside id="preview">
+    <div class="pv-head">
+      <div class="pv-title" id="pvTitle"></div>
+      <a class="btn small" id="pvOpen" target="_blank" rel="noopener" title="Відкрити в новій вкладці">↗ Окремо</a>
+      <a class="btn small" id="pvDl" title="Завантажити оригінал файлу">⬇</a>
+      <button type="button" class="btn small" id="pvClose" title="Закрити (Esc)">✕</button>
+    </div>
+    <div class="pv-tabs" id="pvTabs" hidden></div>
+    <div class="pv-body"><div id="pvMsg"></div><iframe id="pvFrame" title="Перегляд скану"></iframe></div>
+  </aside>
+</main>
+
+<!-- Вхід -->
+<dialog id="dlgLogin" class="narrow">
+  <form id="formLogin">
+    <div class="dlg-head">Вхід</div>
+    <div class="dlg-body one">
+      <div><label for="lgUser">Співробітник</label><select id="lgUser"></select></div>
+      <div><label for="lgPass">Пароль</label><input type="password" id="lgPass" autocomplete="current-password"></div>
+    </div>
+    <div class="err" id="lgErr"></div>
+    <div class="dlg-foot"><span class="spacer"></span>
+      <button type="button" class="btn" data-close="dlgLogin">Скасувати</button>
+      <button type="submit" class="btn primary">Увійти</button></div>
+  </form>
+</dialog>
+
+<!-- Експорт в Excel -->
+<dialog id="dlgXlsx" style="width:min(480px, 94vw)">
+  <form id="formXlsx">
+    <div class="dlg-head">Експорт в Excel</div>
+    <div class="dlg-body one">
+      <div class="hint" style="margin:0">Накази без вкладень: номер, дата, назва, хто створив, хто підписав (для основного реєстру ще статус і зв'язки).</div>
+      <div><label for="xReg">Реєстр</label><select id="xReg"></select></div>
+      <div><label for="xYear">Рік</label><select id="xYear"></select></div>
+      <div><label>Місяці <span class="muted" style="font-weight:400">· <a href="#" id="xAll">усі</a> · <a href="#" id="xNone">жодного</a></span></label>
+        <div id="xMonths" class="xmonths"></div></div>
+    </div>
+    <div class="err" id="xErr"></div>
+    <div class="dlg-foot"><span class="spacer"></span>
+      <button type="button" class="btn" data-close="dlgXlsx">Скасувати</button>
+      <button type="submit" class="btn primary">Завантажити .xlsx</button></div>
+  </form>
+</dialog>
+
+<!-- Підтвердження паролем (видалення наказу, остаточне видалення з кошика) -->
+<dialog id="dlgDel" class="narrow">
+  <form id="formDel">
+    <div class="dlg-head" id="delHead">Видалити наказ?</div>
+    <div class="dlg-body one">
+      <div class="hint" id="delText" style="margin:0"></div>
+      <div><label>Ваш пароль</label><input type="password" id="delPw" autocomplete="current-password" required></div>
+    </div>
+    <div class="err" id="delErr"></div>
+    <div class="dlg-foot"><span class="spacer"></span>
+      <button type="button" class="btn" data-close="dlgDel">Скасувати</button>
+      <button type="submit" class="btn danger" id="delBtn">Видалити</button></div>
+  </form>
+</dialog>
+
+<!-- Файли, кинуті на рядок таблиці -->
+<dialog id="dlgAtt" class="narrow">
+  <form id="formAtt">
+    <div class="dlg-head">Прикріпити файли?</div>
+    <div class="dlg-body one"><div id="attText"></div></div>
+    <div class="err" id="attErr"></div>
+    <div class="dlg-foot"><span class="spacer"></span>
+      <button type="button" class="btn" data-close="dlgAtt">Скасувати</button>
+      <button type="submit" class="btn primary">Прикріпити</button></div>
+  </form>
+</dialog>
+
+<!-- Журнал дій -->
+<dialog id="dlgAudit" class="wide">
+  <div class="dlg-head" id="auTitle">Журнал дій</div>
+  <div class="tbar">
+    <input type="search" id="auQ" placeholder="Пошук: номер наказу, ПІП, слово з подробиць…">
+    <select id="auGroup"><option value="">Усі дії</option><option value="orders">Накази</option><option value="trash">Видалення й кошик</option>
+      <option value="dirs">Довідники</option><option value="security">Паролі, ролі, блокування</option><option value="import">Імпорт</option></select>
+    <button type="button" class="btn" id="auAll" hidden>Весь журнал</button>
+  </div>
+  <div class="dir-wrap" id="auBody"></div>
+  <div class="dlg-foot"><span class="hint" id="auHint"></span><span class="spacer"></span>
+    <button type="button" class="btn" id="auMore" hidden>Показати ще</button>
+    <button type="button" class="btn" data-close="dlgAudit">Закрити</button></div>
+</dialog>
+
+<!-- Кошик -->
+<dialog id="dlgTrash" class="wide">
+  <div class="dlg-head">Кошик</div>
+  <div class="dir-wrap" id="trBody"></div>
+  <div class="dlg-foot"><span class="hint" id="trHint"></span><span class="spacer"></span>
+    <button type="button" class="btn" data-close="dlgTrash">Закрити</button></div>
+</dialog>
+
+<!-- Перевірка реєстру -->
+<dialog id="dlgChk" class="wide">
+  <div class="dlg-head">Перевірка реєстру</div>
+  <div class="tbar"><label for="chkYear" style="margin:0">Рік</label><select id="chkYear"></select>
+    <span class="hint" style="margin:0">Пропущені номери, накази без прикріплених файлів і давні резерви.</span></div>
+  <div class="dir-wrap chk" id="chkBody"></div>
+  <div class="dlg-foot"><span class="hint">Нагадування відкривається саме раз на тиждень і в останні дні місяця.</span><span class="spacer"></span>
+    <button type="button" class="btn" data-close="dlgChk">Закрити</button></div>
+</dialog>
+
+<!-- Зміна пароля -->
+<dialog id="dlgPwd" class="narrow">
+  <form id="formPwd">
+    <div class="dlg-head">Зміна пароля</div>
+    <div class="dlg-body one">
+      <div><label>Поточний пароль</label><input type="password" id="pwOld" autocomplete="current-password"></div>
+      <div><label>Новий пароль</label><input type="password" id="pwNew" autocomplete="new-password"></div>
+      <div><label>Повторіть новий пароль</label><input type="password" id="pwNew2" autocomplete="new-password"></div>
+    </div>
+    <div class="err" id="pwErr"></div>
+    <div class="dlg-foot"><span class="spacer"></span>
+      <button type="button" class="btn" data-close="dlgPwd">Скасувати</button>
+      <button type="submit" class="btn primary">Змінити</button></div>
+  </form>
+</dialog>
+
+<!-- Наказ -->
+<dialog id="dlg">
+  <form id="form" autocomplete="off">
+    <div class="dlg-head" id="dlgTitle">Новий наказ</div>
+    <div class="dlg-split">
+    <div class="dlg-body">
+      <div><label for="fTypeF">Реєстр</label><select id="fTypeF" name="type"></select></div>
+      <div><label for="fDate">Дата</label><input type="date" id="fDate" name="date" required></div>
+      <div><label for="fNumber">Номер</label>
+        <input id="fNumber" name="number" placeholder="Автоматично">
+        <div class="hint" id="numHint"></div></div>
+      <div id="grpStatus"><label for="fStatusF">Статус</label><select id="fStatusF" name="status"></select>
+        <div class="hint" id="statusHint"></div></div>
+      <div class="full"><label for="fTitle">Назва / зміст</label><textarea id="fTitle" name="title" rows="3" required></textarea>
+        <div class="hint" id="titleHint"></div></div>
+      <div class="full" id="grpCreators"><label>Хто створив</label>
+        <div class="ms" id="ms"><span id="tags"></span><input id="msInput" placeholder="Почніть вводити ПІП…">
+          <div class="ms-list" id="msList" hidden></div></div></div>
+      <div class="full" id="grpSigner"><label for="fSigner">Хто підписав</label><select id="fSigner" name="signer_id"></select></div>
+      <div class="full" id="grpLinks"><label>Зв'язки з іншими наказами <span style="font-weight:400">(необов'язково)</span></label>
+        <div class="filelist" id="linkList"></div>
+        <div class="linkadd" id="linkAdd">
+          <select id="lnKind"><option value="cancels">Скасовує</option><option value="amends">Вносить зміни до</option></select>
+          <div class="lnsearch"><input id="lnNum" placeholder="№ наказу, наприклад 15" autocomplete="off">
+            <div class="ms-list" id="lnList" hidden></div></div>
+        </div>
+        <div class="hint" id="lnHint">Якщо цей наказ скасовує інший, той автоматично позначиться як такий, що втратив чинність.</div>
+        <div class="hint" id="lnIn"></div></div>
+      <div class="full" id="fileRow"><label>Файли наказу (можна кілька: PDF, Word, Excel, PowerPoint…) — кнопкою або перетягніть сюди</label>
+        <div class="filelist" id="curFiles"></div>
+        <div class="filebox"><button type="button" class="btn" id="btnAttach"></button>
+          <input type="file" id="fFile" multiple hidden></div></div>
+      <div class="full hint" id="auditInfo"></div>
+    </div>
+    <aside id="opv">
+      <div class="opv-head"><div id="opvTabs"></div>
+        <a class="btn small" id="opvOpen" target="_blank" rel="noopener" title="Відкрити в новій вкладці">↗ Окремо</a>
+        <a class="btn small" id="opvDl" title="Завантажити оригінал файлу">⬇ Завантажити</a></div>
+      <div id="opvBody"><div id="opvMsg"></div><iframe id="opvFrame" title="Скан наказу"></iframe></div>
+    </aside>
+    </div>
+    <div class="err" id="err"></div>
+    <div class="dlg-foot">
+      <button type="button" class="btn danger" id="btnDelete" hidden>Видалити</button>
+      <button type="button" class="btn" id="btnHist" hidden>Історія змін</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-close="dlg" id="btnCancel">Закрити</button>
+      <button type="submit" class="btn primary" id="btnSave">Зберегти</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Налаштування -->
+<dialog id="dlgSet" class="narrow" style="width:min(560px, 94vw)">
+  <form id="formSet">
+    <div class="dlg-head">Налаштування</div>
+    <div class="dlg-body one">
+      <div><label>Що бачать без входу в систему</label><div id="setAccess" class="radios"></div>
+        <div class="hint">Кадрові реєстри без входу не видно ніколи. Щоб людина бачила закрите, дайте їй роль «Переглядач» (можна один спільний запис на кількох).</div></div>
+      <div id="setCloud" hidden></div>
+      <div id="setCa" hidden></div>
+    </div>
+    <div class="err" id="setErr"></div>
+    <div class="dlg-foot"><span class="spacer"></span>
+      <button type="button" class="btn" data-close="dlgSet">Скасувати</button>
+      <button type="submit" class="btn primary">Зберегти</button></div>
+  </form>
+</dialog>
+
+<!-- Довідники -->
+<dialog id="dlgDir" class="wide">
+  <div class="dlg-head">Довідники</div>
+  <div class="tabs">
+    <button class="tab on" data-tab="emp">Співробітники (хто створив)</button>
+    <button class="tab" data-tab="sig">Підписанти (хто підписав)</button>
+    <button class="tab" data-tab="reg">Реєстри (журнали)</button>
+  </div>
+  <div class="dir-wrap" id="dirBody"></div>
+  <div class="dlg-foot"><span class="hint" id="dirHint"></span><span class="spacer"></span>
+    <button type="button" class="btn" data-close="dlgDir">Закрити</button></div>
+</dialog>
+
+<!-- Довідка -->
+<dialog id="dlgHelp" class="wide">
+  <div class="dlg-head">Довідка <span class="muted" id="helpVer" style="font-weight:400;font-size:13px"></span></div>
+  <div class="tabs" id="helpTabs"></div>
+  <div class="dir-wrap helptext" id="helpBody"></div>
+  <div class="dlg-foot"><span class="spacer"></span><button type="button" class="btn" data-close="dlgHelp">Закрити</button></div>
+</dialog>
+
+<!-- Імпорт -->
+<dialog id="dlgImp">
+  <form id="formImp">
+    <div class="dlg-head">Імпорт з Excel / CSV</div>
+    <div class="dlg-body">
+      <div class="full hint" style="margin:0">
+        Файл .xlsx або .csv з рядком заголовків. Розпізнаються колонки:
+        <b>Номер, Дата, Реєстр (коротка назва чи індекс, як на вкладці, або «основна»), Назва (Зміст), Хто створив (кілька — через «;»), Хто підписав, Статус</b>
+        (українські та російські назви). Обов'язкові — Дата і Назва. Нові ПІП автоматично потраплять у довідники (без ролей).
+        Наказ, що вже є (той самий тип, рік і номер), пропускається.
+      </div>
+      <div class="full"><label>Файл</label><input type="file" id="impFile" accept=".xlsx,.xlsm,.csv,.txt" required></div>
+      <div class="full"><label>Реєстр для рядків, де реєстр не вказано</label><select id="impType"></select></div>
+      <div class="full" id="impResult"></div>
+    </div>
+    <div class="dlg-foot"><span class="spacer"></span>
+      <button type="button" class="btn" data-close="dlgImp">Закрити</button>
+      <button type="submit" class="btn primary">Імпортувати</button></div>
+  </form>
+</dialog>
+
+<div id="toast"></div>
+<div id="busy"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = iso => iso ? iso.split('-').reverse().join('.') : '';
+const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many; };
+const PAGE = 100;            // скільки рядків малюється одразу і додається за один раз при прокручуванні
+let SHOWN = PAGE, LASTQ = null;
+let META = null, ME = null, LOOK = {employees: [], signers: []}, ORDERS = [], CUR = null, CURO = null;
+const MONTHS = ['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+const SORT_DEFAULT = {key: 'date', dir: 'desc'};
+let SORT = {...SORT_DEFAULT};
+const CLIP_SM = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
+const FT = {
+  pdf: ['PDF', '#d93025'],
+  word: ['DOC', '#2b6cd4'], excel: ['XLS', '#1e8e3e'], ppt: ['PPT', '#d24726'], zip: ['ZIP', '#a0761a'], img: ['IMG', '#8e44ad'], txt: ['TXT', '#6b7385']
+};
+function fileKind(ext) {
+  ext = (ext || '').toLowerCase();
+  if (ext === 'pdf') return 'pdf';
+  if (['doc', 'docx', 'odt', 'rtf', 'dot', 'dotx', 'docm', 'ott'].includes(ext)) return 'word';
+  if (['xls', 'xlsx', 'xlsm', 'ods'].includes(ext)) return 'excel';
+  if (['ppt', 'pptx', 'pps', 'ppsx', 'odp'].includes(ext)) return 'ppt';
+  if (['zip', '7z', 'rar', 'tar', 'tgz', 'gz'].includes(ext)) return 'zip';
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(ext)) return 'img';
+  if (ext === 'txt') return 'txt';
+  return '';
+}
+function fileIcon(ext) {
+  const k = fileKind(ext), [label, color] = FT[k] || [(ext || 'файл').toUpperCase().slice(0, 4), '#6b7385'];
+  const fs = label.length > 3 ? 7 : 8.5;
+  return `<svg viewBox="0 0 28 34" width="28" height="34" aria-hidden="true"><path d="M3 1h15l8 8v22a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z" fill="${color}"/><path d="M18 1l8 8h-6a2 2 0 0 1-2-2z" fill="#fff" fill-opacity=".45"/><text x="13.5" y="26" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="${fs}" fill="#fff">${esc(label)}</text></svg>`;
+}
+const CLIP = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
+let editing = null, SEL = [], readOnly = false, DIR = {emp: [], sig: []}, dirTab = 'emp';
+
+function toast(msg, kind, action) {
+  const t = $('#toast'); t.textContent = msg; t.classList.toggle('err', kind === 'err');
+  if (action) {   // кнопка в повідомленні, наприклад «Повернути»
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = action.label;
+    b.onclick = () => { t.classList.remove('show', 'act'); clearTimeout(toast._t); action.run(); };
+    t.append(b);
+  }
+  t.classList.toggle('act', !!action); t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show', 'act'), action ? 10000 : kind === 'err' ? 5000 : 3000);
+}
+const toastErr = e => toast((e && e.message) || String(e || 'Помилка'), 'err');
+// підсвічування знайденого тексту (без урахування регістру)
+function hl(text, q) {
+  text = String(text ?? ''); q = String(q || '').split(/\s+/).filter(Boolean).join(' ');
+  if (!q) return esc(text);
+  const lt = text.toLowerCase(), lq = q.toLowerCase();
+  let out = '', i = 0, j;
+  while ((j = lt.indexOf(lq, i)) !== -1) { out += esc(text.slice(i, j)) + '<mark>' + esc(text.slice(j, j + lq.length)) + '</mark>'; i = j + lq.length; }
+  return out + esc(text.slice(i));
+}
+const LINK_OUT = {cancels: 'Скасовує', amends: 'Вносить зміни до'};
+const LINK_IN = {cancels: 'Скасовано наказом', amends: 'Змінено наказом'};
+const goLink = l => `<a class="go" data-go="${l.id}" data-type="${esc(l.type)}" data-num="${esc(l.number)}" data-date="${esc(l.date)}" title="Показати цей наказ">№ ${esc(l.number)} від ${fmtDate(l.date)}</a>`;
+let BUSY = 0, busyT = null;
+function busy(d) {
+  BUSY = Math.max(0, BUSY + d);
+  clearTimeout(busyT);
+  if (BUSY) busyT = setTimeout(() => $('#busy').classList.add('on'), 150);
+  else $('#busy').classList.remove('on');
+}
+async function api(url, opts = {}) {
+  if (opts.json !== undefined) {
+    opts = { method: opts.method || 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(opts.json) };
+  }
+  let r;
+  busy(1);
+  try { r = await fetch(url, opts); } finally { busy(-1); }
+  let data = null; try { data = await r.json(); } catch (e) {}
+  if (!r.ok) {
+    if (r.status === 401 && ME && url !== '/api/login') { toast('Сеанс завершено — увійдіть знову', 'err'); await init(); }
+    throw new Error((data && data.error) || ('Помилка ' + r.status));
+  }
+  return data;
+}
+function localToday() { const d = new Date(), z = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()); }
+const roleNames = u => [u.is_admin && 'Адміністратор', u.is_secretary && 'Секретар', u.is_hr && 'Кадровик', u.is_viewer && 'Переглядач'].filter(Boolean).join(', ');
+const canEditType = t => !!ME && ME.editable_types.includes(t);
+const regOf = k => META.registers.find(r => r.key === k);
+const kindOf = k => (regOf(k) || {}).kind;
+function fillSelect(sel, map, first) {
+  sel.innerHTML = (first !== undefined ? `<option value="">${first}</option>` : '') +
+    Object.entries(map).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
+}
+(() => {
+  const P = HTMLDialogElement.prototype, close = P.close, show = P.showModal;
+  P.close = function (v) {
+    if (!this.open || this._closing) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return close.call(this, v);
+    this.classList.add('closing');
+    this._closing = setTimeout(() => { this._closing = null; this.classList.remove('closing'); close.call(this, v); }, 120);
+  };
+  P.showModal = function () {
+    if (this._closing) { clearTimeout(this._closing); this._closing = null; this.classList.remove('closing'); if (this.open) return; }
+    return show.call(this);
+  };
+})();
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-close]'); if (c) $('#' + c.dataset.close).close();
+  document.querySelectorAll('details.menu[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; });
+});
+
+// ---------------------------------------------------------------- старт
+async function init() {
+  META = await api('/api/meta');
+  ME = META.user;
+  LOOK = ME ? await api('/api/lookups') : {employees: [], signers: []};
+  fillSelect($('#fStatus'), META.statuses, 'Статус: усі');
+  $('#fMonth').innerHTML = '<option value="">Усі місяці</option>' + MONTHS.map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
+  let saved = null; try { saved = localStorage.getItem('reg'); } catch (e) {}
+  if (!regOf(CUR)) CUR = regOf(saved) ? saved : (META.registers[0] || {}).key;
+  renderHeader();
+  $('#banner').hidden = !(ME && ME.must_change);
+  const closed = !META.registers.length;
+  document.querySelector('.filters').hidden = closed;
+  document.querySelector('.card table').hidden = closed;
+  $('#empty').textContent = closed ? 'Щоб переглядати накази, увійдіть: кнопка «Увійти» угорі праворуч.' : 'Наказів не знайдено';
+  if (closed) { $('#pageTitle').textContent = 'Реєстр наказів'; document.title = 'Реєстр наказів'; }
+  await setCur(CUR, true);
+  refreshChecks(true);
+}
+
+async function setCur(key, keepFilters) {
+  closePreview();
+  CUR = key;
+  try { localStorage.setItem('reg', key); } catch (e) {}
+  if (!keepFilters) clearFilters();
+  renderTabs(); applyRegisterUi();
+  await loadFilterOptions();
+  await load();
+}
+function clearFilters() {
+  $('#q').value = ''; $('#qnum').value = '';
+  ['#fMonth', '#fYear', '#fCreator', '#fStatus'].forEach(x => $(x).value = '');
+}
+async function loadFilterOptions() {
+  if (!CUR) return;
+  let o = {creators: [], signers: []};
+  try { o = await api('/api/filter-options?type=' + encodeURIComponent(CUR)); } catch (e) {}
+  const fill = (sel, items, first) => {
+    const cur = $(sel).value;
+    $(sel).innerHTML = `<option value="">${first}</option>` + items.map(i => `<option value="${i.id}">${esc(i.name)}</option>`).join('');
+    $(sel).value = items.some(i => String(i.id) === cur) ? cur : '';
+  };
+  fill('#fCreator', o.creators, 'Хто створив: усі');
+}
+function renderTabs() {
+  const nav = $('#regtabs');
+  nav.hidden = META.registers.length < 2;
+  nav.innerHTML = META.registers.map(r => `<button type="button" class="rtab ${r.key === CUR ? 'on' : ''}" data-key="${esc(r.key)}" title="${esc(r.title)}">${esc(r.short)}</button>`).join('');
+}
+$('#regtabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-key]'); if (b && b.dataset.key !== CUR) setCur(b.dataset.key);
+});
+function applyRegisterUi() {
+  const r = regOf(CUR); if (!r) return;
+
+  $('#pageTitle').textContent = r.title;
+  $('#pageTitle').style.fontSize = r.title.length > 110 ? '15px' : '';
+  document.querySelector('.card table').classList.add('t-main');
+  document.title = r.kind === 'main' ? r.title : 'Реєстр наказів — ' + r.short;
+  renderHead();
+  const b = $('#btnNewTop'); if (b) b.hidden = !canEditType(CUR);
+}
+// перший стовпець — номер і під ним дата; сортувати можна за кожним окремо
+const COLS_MAIN = [['nd', '', 'w-nd'], ['title', 'Назва', ''],
+  ['creators', 'Хто створив', 'w-creators hide-s'], ['signer', 'Хто підписав', 'w-signer hide-s'], ['file', 'Скан', 'w-file']];
+const NCOLS = () => COLS_MAIN.length;
+function renderHead() {
+  const cols = COLS_MAIN;   // однакові для основних і кадрових реєстрів
+  const arr = k => `<span class="arr">${SORT.key === k ? (SORT.dir === 'asc' ? '▲' : '▼') : ''}</span>`;
+  const sk = (k, t) => `<span class="sortable ${SORT.key === k ? 'sorted' : ''}" data-sort="${k}" title="Сортувати">${t}${arr(k)}</span>`;
+  $('#thead').innerHTML = '<tr>' + cols.map(([k, t, c]) => k === 'nd'
+    ? `<th class="${c}">${sk('number', '№')}<span class="muted"> · </span>${sk('date', 'Дата')}</th>`
+    : `<th class="sortable ${c} ${SORT.key === k ? 'sorted' : ''}" data-sort="${k}" title="Сортувати">${t}${arr(k)}</th>`).join('') + '</tr>';
+}
+$('#thead').addEventListener('click', e => {
+  const th = e.target.closest('[data-sort]'); if (!th) return;
+  const k = th.dataset.sort;
+  SORT = SORT.key === k ? {key: k, dir: SORT.dir === 'asc' ? 'desc' : 'asc'} : {key: k, dir: (k === 'date' || k === 'file') ? 'desc' : 'asc'};
+  SHOWN = PAGE; renderHead(); render(); $('.card').scrollTop = 0;
+});
+const SORT_VAL = {
+  number: o => (o.year || 0) * 1e6 + (o.seq || 0),
+  date: o => o.date,
+  title: o => (o.title || '').toLowerCase(),
+  creators: o => o.creators.map(c => c.name).join(', ').toLowerCase(),
+  signer: o => (o.signer_name || '').toLowerCase(),
+  file: o => o.has_file ? 1 : 0,
+};
+function sortedOrders() {
+  const f = SORT_VAL[SORT.key] || SORT_VAL.date, m = SORT.dir === 'asc' ? 1 : -1;
+  return [...ORDERS].sort((a, b) => {
+    const x = f(a), y = f(b);
+    const c = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'uk');
+    if (c) return c * m;
+    return b.date.localeCompare(a.date) || (b.seq || 0) - (a.seq || 0) || b.id - a.id;
+  });
+}
+async function refreshMeta() {
+  META = await api('/api/meta');
+  if (!regOf(CUR)) CUR = (META.registers[0] || {}).key;
+  renderTabs(); applyRegisterUi();
+}
+
+function renderHeader() {
+  const h = $('#hright');
+  const helpBtn = '<button class="btn hbtn" data-act="help" title="Довідка: як користуватись програмою"><svg class="hico" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.4-2.8 4"/><circle cx="12" cy="17.6" r=".6" fill="currentColor"/></svg><span>Довідка</span></button>';
+  if (!ME) { h.innerHTML = helpBtn + '<button class="btn primary" data-act="login">Увійти</button>'; return; }
+  let html = helpBtn;
+  if (ME.editable_types.length) html += '<button class="btn" data-act="checks" title="Пропущені номери, накази без файлів, давні резерви">Перевірка<span class="hcount" id="chkCount" hidden></span></button><button class="btn" data-act="xlsx" title="Вивантажити накази в Excel (без вкладень)">Експорт в Excel</button><button class="btn primary" data-act="new" id="btnNewTop">+ Новий наказ</button>';
+  if (ME.is_admin) html += `<details class="menu"><summary class="btn">Адміністрування ▾</summary><div class="menu-list">
+      <button data-act="dir">Довідники</button><button data-act="audit">Журнал дій</button><button data-act="trash">Кошик</button><button data-act="settings">Налаштування</button>
+      <button data-act="import">Імпорт з Excel/CSV</button>
+      <button data-act="export">Експорт у CSV</button><button data-act="backup">Резервна копія бази</button></div></details>`;
+  html += `<details class="menu"><summary class="btn">${esc(ME.name)} ▾</summary><div class="menu-list">
+      <div class="who" style="padding:6px 10px">${esc(roleNames(ME))}</div>
+      <button data-act="pwd">Змінити пароль</button><button data-act="logout">Вийти</button></div></details>`;
+  h.innerHTML = html;
+}
+
+$('#hright').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  b.closest('details')?.removeAttribute('open');
+  header_action(b.dataset.act);
+});
+$('#banner').addEventListener('click', e => { if (e.target.dataset.act) header_action(e.target.dataset.act); });
+
+function header_action(act) {
+  if (act === 'login') openLogin();
+  else if (act === 'logout') api('/api/logout', {method: 'POST'}).then(() => { toast('Ви вийшли'); resetFilters(); init(); });
+  else if (act === 'new') openOrder(null);
+  else if (act === 'pwd') openPwd();
+  else if (act === 'dir') openDir();
+  else if (act === 'import') { $('#formImp').reset(); $('#impResult').innerHTML = ''; fillSelect($('#impType'), Object.fromEntries(META.registers.map(r => [r.key, r.short]))); $('#dlgImp').showModal(); }
+  else if (act === 'export') location.href = '/api/export.csv';
+  else if (act === 'backup') location.href = '/api/backup';
+  else if (act === 'xlsx') openXlsx();
+  else if (act === 'help') openHelp();
+  else if (act === 'audit') openAudit();
+  else if (act === 'trash') openTrash();
+  else if (act === 'checks') openChecks();
+  else if (act === 'settings') openSettings();
+}
+let XINFO = null;
+async function openXlsx() {
+  try { XINFO = (await api('/api/export-info')).registers; } catch (e) { return toastErr(e); }
+  $('#xReg').innerHTML = XINFO.map(r => `<option value="${esc(r.key)}">${esc(r.short)}</option>`).join('');
+  if (XINFO.some(r => r.key === CUR)) $('#xReg').value = CUR;
+  $('#xErr').textContent = '';
+  $('#xMonths').innerHTML = MONTHS.map((m, i) => `<label><input type="checkbox" value="${i + 1}" checked> ${m}</label>`).join('');
+  fillXYears(); $('#dlgXlsx').showModal();
+}
+const setXMonths = v => { document.querySelectorAll('#xMonths input').forEach(c => c.checked = v); if (v) $('#xErr').textContent = ''; };
+$('#xMonths').addEventListener('change', () => { if (document.querySelector('#xMonths input:checked')) $('#xErr').textContent = ''; });
+$('#xAll').onclick = e => { e.preventDefault(); setXMonths(true); };
+$('#xNone').onclick = e => { e.preventDefault(); setXMonths(false); };
+function fillXYears() {
+  const r = XINFO.find(x => x.key === $('#xReg').value) || {years: []};
+  $('#xYear').innerHTML = '<option value="all">Усі роки (по аркушу на рік)</option>' + r.years.map(y => `<option value="${y.year}">${y.year} (${y.count})</option>`).join('');
+  const cy = $('#fYear').value; if (cy && r.years.some(y => String(y.year) === cy)) $('#xYear').value = cy;
+}
+$('#xReg').addEventListener('change', fillXYears);
+$('#formXlsx').addEventListener('submit', e => {
+  e.preventDefault();
+  const ms = [...document.querySelectorAll('#xMonths input:checked')].map(c => c.value);
+  if (!ms.length) { $('#xErr').textContent = 'Оберіть хоча б один місяць'; return; }
+  $('#xErr').textContent = '';
+  location.href = '/api/export.xlsx?type=' + encodeURIComponent($('#xReg').value) + '&year=' + encodeURIComponent($('#xYear').value) + '&months=' + ms.join(',');
+  $('#dlgXlsx').close();
+});
+function resetFilters() { clearFilters(); }
+$('#btnReset').onclick = () => { clearFilters(); SORT = {...SORT_DEFAULT}; SHOWN = PAGE; renderHead(); load(); };
+
+// ---------------------------------------------------------------- вхід / пароль
+async function openLogin() {
+  const r = await api('/api/login-list');
+  $('#lgUser').innerHTML = r.employees.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('');
+  $('#lgPass').value = ''; $('#lgErr').textContent = r.employees.length ? '' : 'Немає співробітників з доступом';
+  $('#dlgLogin').showModal(); $('#lgPass').focus();
+}
+$('#formLogin').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    await api('/api/login', {json: {employee_id: +$('#lgUser').value, password: $('#lgPass').value}});
+    $('#dlgLogin').close(); resetFilters(); await init(); toast('Вітаємо, ' + ME.name);
+  } catch (err) { $('#lgErr').textContent = err.message; $('#lgPass').select(); }
+});
+function openPwd() { $('#formPwd').reset(); $('#pwErr').textContent = ''; $('#dlgPwd').showModal(); $('#pwOld').focus(); }
+$('#formPwd').addEventListener('submit', async e => {
+  e.preventDefault();
+  if ($('#pwNew').value !== $('#pwNew2').value) { $('#pwErr').textContent = 'Нові паролі не збігаються'; return; }
+  try { await api('/api/password', {json: {old: $('#pwOld').value, new: $('#pwNew').value}});
+    $('#dlgPwd').close(); toast('Пароль змінено'); await init(); }
+  catch (err) { $('#pwErr').textContent = err.message; }
+});
+
+// ---------------------------------------------------------------- список
+async function load() {
+  const p = new URLSearchParams();
+  if ($('#qnum').value.trim()) p.set('num', $('#qnum').value.trim());
+  if ($('#q').value.trim()) p.set('q', $('#q').value.trim());
+  if (CUR) p.set('type', CUR);
+  if ($('#fMonth').value) p.set('month', $('#fMonth').value);
+  if ($('#fYear').value) p.set('year', $('#fYear').value);
+  if ($('#fCreator').value && !$('#fCreator').hidden) p.set('creator', $('#fCreator').value);
+  if ($('#fStatus').value && !$('#fStatus').hidden) p.set('status', $('#fStatus').value);
+  const data = await api('/api/orders?' + p);
+  const qs = p.toString();
+  if (qs !== LASTQ) { SHOWN = PAGE; LASTQ = qs; const c = $('.card'); if (c) c.scrollTop = 0; }   // змінились фільтри — знову з початку
+  ORDERS = data.orders;
+  syncPreview(false);
+  const cur = $('#fYear').value;
+  $('#fYear').innerHTML = '<option value="">Усі роки</option>' + data.years.map(y => `<option value="${y}">${y}</option>`).join('');
+  $('#fYear').value = cur;
+  render();
+}
+function render() {
+  const all = sortedOrders();
+  const list = all.slice(0, SHOWN);
+  const q = $('#q').value.trim(), qn = $('#qnum').value.trim().replace(/^[№#\s]+/, '');
+  const numHl = n => /^\d+$/.test(qn) ? (String(n).toLowerCase() === qn || String(n).toLowerCase().startsWith(qn + '-') ? `<mark>${esc(n)}</mark>` : esc(n)) : hl(n, qn);
+  const linksHtml = o => o.links.map(l => `<span class="lnk">${LINK_OUT[l.kind]} ${goLink(l)}</span>`).join('') +
+    o.linked_by.map(l => `<span class="lnk">${LINK_IN[l.kind]} ${goLink(l)}</span>`).join('');
+  const nd = o => `<td class="nd"><div class="num">${numHl(o.number)}</div><div class="date">${fmtDate(o.date)}</div></td>`;
+  const row = (o, z) => `
+    <tr data-id="${o.id}" class="${z} ${o.status === 'reserved' ? 'reserved' : ''} ${o.void ? 'void' : ''} ${o.can_edit ? 'ed' : 'ro'} ${o.id === PREV ? 'viewing' : ''} ${o.id === FLASH ? 'flash' : ''}">
+      ${nd(o)}
+      <td><span class="ttl">${o.title ? hl(o.title, q) : '<i>без назви</i>'}</span>${o.status === 'reserved' ? '<span class="badge-res">РЕЗЕРВ</span>' : ''}${o.void ? '<span class="badge-void">ВТРАТИВ ЧИННІСТЬ</span>' : ''}${linksHtml(o)}</td>
+      <td class="hide-s">${esc(o.creators.map(c => c.name).join(', '))}</td>
+      <td class="hide-s">${esc(o.signer_name || '')}</td>
+      <td class="act">${o.has_file ? `<div class="ficons">${o.files.map(f => `<a class="ficon ${o.id === PREV && f.id === PVF ? 'on' : ''} ${META.files_open ? '' : 'locked'}" href="/api/files/${f.id}" target="_blank" title="${META.files_open ? esc(f.name) : 'Скан доступний після входу'}" data-pv="${o.id}" data-f="${f.id}">${fileIcon(f.ext)}</a>`).join('')}</div>` : ''}</td>
+    </tr>`;
+  // при сортуванні за датою — роздільники за місяцями (з кількістю наказів місяця серед знайдених)
+  const byMonth = SORT.key === 'date';
+  const mcount = {};
+  if (byMonth) all.forEach(o => { const k = o.date.slice(0, 7); mcount[k] = (mcount[k] || 0) + 1; });
+  let html = '', prevM = null, z = 0;
+  for (const o of list) {
+    const m = o.date.slice(0, 7);
+    if (byMonth && m !== prevM) {
+      const n = mcount[m];
+      html += `<tr class="msep"><td colspan="${NCOLS()}">${MONTHS[+m.slice(5, 7) - 1]} ${m.slice(0, 4)}<span>${n} ${plural(n, 'наказ', 'накази', 'наказів')}</span></td></tr>`;
+      prevM = m; z = 0;
+    }
+    html += row(o, z++ % 2 ? 'zb' : '');
+  }
+  $('#rows').innerHTML = html;
+  $('#empty').hidden = all.length > 0;
+  $('#count').textContent = all.length ? (list.length < all.length ? `Показано: ${list.length} з ${all.length}` : `Всього: ${all.length}`) : '';
+  MORE_LEFT = all.length - list.length;
+  requestAnimationFrame(checkMore);
+}
+// підвантаження наступних рядків, коли таблиця доскролена майже до кінця
+let MORE_LEFT = 0;
+function checkMore() {
+  const s = $('#more'); if (!s || MORE_LEFT <= 0) return;
+  if (s.getBoundingClientRect().top < window.innerHeight + 400) { SHOWN += PAGE; render(); }
+}
+new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) checkMore(); }, {rootMargin: '400px'}).observe($('#more'));
+$('#rows').addEventListener('click', e => {
+  const go = e.target.closest('a[data-go]');
+  if (go) { e.preventDefault(); goToOrder(+go.dataset.go, go.dataset.type, go.dataset.num, go.dataset.date); return; }
+  const clip = e.target.closest('a.ficon');
+  if (clip && !META.files_open) { e.preventDefault(); toast('Скани доступні після входу'); openLogin(); return; }
+  if (clip) {
+    if (e.ctrlKey || e.metaKey || e.shiftKey) return;   // Ctrl+клік — у новій вкладці, як звичайне посилання
+    e.preventDefault(); openPreview(+clip.dataset.pv, +clip.dataset.f); return;
+  }
+  const tr = e.target.closest('tr'); if (!tr) return;
+  const o = ORDERS.find(x => x.id == tr.dataset.id);
+  if (o && o.can_edit) openOrder(o);   // тим, хто не може редагувати, картка наказу нічого не дає — не відкриваємо
+});
+
+// ---- перехід до іншого наказу (зв'язки, перевірка): фільтр за номером і роком, рядок блимає
+let FLASH = null;
+async function goToOrder(id, type, number, date, open) {
+  try {
+    if (type && type !== CUR && regOf(type)) await setCur(type);
+    clearFilters(); SORT = {...SORT_DEFAULT}; renderHead();
+    $('#qnum').value = number;
+    await load();
+    const y = String(date || '').slice(0, 4);
+    if ([...$('#fYear').options].some(x => x.value === y)) { $('#fYear').value = y; }
+    FLASH = id; await load(); setTimeout(() => { FLASH = null; }, 2500);
+    const tr = document.querySelector(`#rows tr[data-id="${id}"]`);
+    if (tr) tr.scrollIntoView({block: 'center'});
+    const o = ORDERS.find(x => x.id === id);
+    if (open && o && o.can_edit) openOrder(o);
+    else if (!o) toast('Наказ не знайдено в цьому реєстрі', 'err');
+  } catch (e) { toastErr(e); }
+}
+
+// ---- перетягування скану на рядок таблиці
+let DROP_TR = null, ATT = null;
+const setDropTr = tr => { if (DROP_TR === tr) return; if (DROP_TR) DROP_TR.classList.remove('dropto'); DROP_TR = tr; if (tr) tr.classList.add('dropto'); };
+$('#rows').addEventListener('dragover', e => {
+  if (!hasFiles(e)) return;
+  const tr = e.target.closest('tr.ed');
+  setDropTr(tr);
+  if (tr) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
+});
+$('#rows').addEventListener('dragleave', e => { if (!e.relatedTarget || !$('#rows').contains(e.relatedTarget)) setDropTr(null); });
+$('#rows').addEventListener('drop', e => {
+  const tr = e.target.closest('tr.ed'); setDropTr(null);
+  if (!tr || !hasFiles(e)) return;
+  e.preventDefault();
+  const o = ORDERS.find(x => x.id == tr.dataset.id); if (!o) return;
+  ATT = {o, files: [...e.dataTransfer.files]};
+  $('#attText').innerHTML = `До наказу <b>№ ${esc(o.number)} від ${fmtDate(o.date)}</b><div class="muted" style="margin:4px 0 10px">${esc(o.title || 'без назви')}</div>` +
+    ATT.files.map(f => `<div class="fitem">${fileIcon((f.name.split('.').pop() || '').toLowerCase()).replace('width="28" height="34"', 'width="22" height="27"')}<span class="n">${esc(f.name)}</span></div>`).join('');
+  $('#attErr').textContent = '';
+  $('#dlgAtt').showModal();
+});
+document.addEventListener('dragend', () => setDropTr(null));
+$('#formAtt').addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData(); ATT.files.forEach(f => fd.append('files', f));
+  try {
+    await api(`/api/orders/${ATT.o.id}/files`, {method: 'POST', body: fd});
+    $('#dlgAtt').close();
+    toast(`Прикріплено до наказу № ${ATT.o.number}: ${ATT.files.length} ${plural(ATT.files.length, 'файл', 'файли', 'файлів')}`);
+    const id = ATT.o.id; FLASH = id; await load(); FLASH = null; refreshChecks();
+    if (PREV === id) syncPreview(true);
+  } catch (err) { $('#attErr').textContent = err.message; }
+});
+
+// ---- перегляд скану праворуч (1/3 вікна)
+let PREV = null;
+const EXT_OFFICE = ['doc', 'docx', 'odt', 'rtf', 'dot', 'dotx', 'docm', 'ott', 'xls', 'xlsx', 'xlsm', 'ods', 'ppt', 'pptx', 'pps', 'ppsx', 'odp'];
+const EXT_DIRECT = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'txt'];
+const EXT_ARCH = ['zip', '7z', 'rar', 'tar', 'tgz', 'gz'];   // показується перелік файлів архіву
+let PVF = null;
+function openPreview(id, fid) {
+  const o = ORDERS.find(x => x.id === id); if (!o || !o.has_file) return;
+  PREV = id;
+  const f = o.files.find(x => x.id === fid) || o.files[0];
+  PVF = f.id;
+  $('#pvTitle').innerHTML = `Наказ № ${esc(o.number)} від ${fmtDate(o.date)}<small>${esc(f.name)}</small>`;
+  const tabs = $('#pvTabs');
+  tabs.hidden = o.files.length < 2;
+  tabs.innerHTML = o.files.length < 2 ? '' : o.files.map(x =>
+    `<button type="button" data-f="${x.id}" class="${x.id === f.id ? 'on' : ''}" title="${esc(x.name)}"><span class="ficon" style="width:22px;height:27px">${fileIcon(x.ext).replace('width="28" height="34"', 'width="22" height="27"')}</span><span class="n">${esc(x.name)}</span></button>`).join('');
+  const ext = f.ext.toLowerCase();
+  const office = EXT_OFFICE.includes(ext), canShow = office || EXT_DIRECT.includes(ext) || EXT_ARCH.includes(ext);
+  const frame = $('#pvFrame');
+  frame.classList.remove('ready');
+  $("#pvOpen").href = `/api/files/${f.id}/preview#navpanes=0&zoom=page-width&view=FitH`;
+  $('#pvDl').href = `/api/files/${f.id}?download=1`;
+  $('#pvOpen').hidden = !canShow;
+  if (canShow) {
+    $('#pvMsg').textContent = office ? 'Готуємо перегляд документа… (перший раз — кілька секунд)' : EXT_ARCH.includes(ext) ? 'Відкриваємо архів…' : 'Завантаження…';
+    frame.hidden = false;
+    frame.src = `/api/files/${f.id}/preview?t=${Date.now()}#navpanes=0&zoom=page-width&view=FitH`;
+  } else {
+    frame.hidden = true; frame.src = 'about:blank';
+    $('#pvMsg').textContent = 'Перегляд цього формату недоступний. Завантажте файл кнопкою «⬇».';
+  }
+  $('#main').classList.add('split');
+  render();
+}
+$('#pvTabs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-f]'); if (b && PREV !== null) openPreview(PREV, +b.dataset.f);
+});
+$('#pvFrame').addEventListener('load', () => { if ($('#pvFrame').getAttribute('src') !== 'about:blank') $('#pvFrame').classList.add('ready'); });
+function closePreview() {
+  if (PREV === null && !$('#main').classList.contains('split')) return;
+  PREV = null;
+  $('#main').classList.remove('split');
+  $('#pvFrame').classList.remove('ready');
+  $('#pvFrame').src = 'about:blank';
+  render();
+}
+function syncPreview(reload) {
+  if (PREV === null) return;
+  const o = ORDERS.find(x => x.id === PREV);
+  if (!o || !o.has_file) closePreview();
+  else if (reload) openPreview(PREV, PVF);
+}
+$('#pvClose').onclick = closePreview;
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && PREV !== null && !document.querySelector('dialog[open]')) closePreview(); });
+let tm; ['#q', '#qnum'].forEach(x => $(x).addEventListener('input', () => { clearTimeout(tm); tm = setTimeout(load, 200); }));
+['#fMonth', '#fYear', '#fCreator', '#fStatus'].forEach(s => $(s).addEventListener('change', load));
+
+// ---------------------------------------------------------------- форма наказу
+function renderTags() {
+  $('#tags').innerHTML = SEL.map(c => `<span class="tag">${esc(c.name)}${readOnly ? '' : `<button type="button" data-rm="${c.id}" title="Прибрати">×</button>`}</span>`).join('');
+  $('#msInput').hidden = readOnly;
+  $('#ms').classList.toggle('ro', readOnly);
+  if (readOnly && !SEL.length) $('#tags').innerHTML = '<span class="muted">—</span>';
+}
+function renderMsList() {
+  const q = $('#msInput').value.trim().toLowerCase();
+  const items = LOOK.employees.filter(e => e.active && !SEL.some(s => s.id === e.id) && e.name.toLowerCase().includes(q)).slice(0, 60);
+  $('#msList').innerHTML = items.length
+    ? items.map(e => `<div data-add="${e.id}">${esc(e.name)}</div>`).join('')
+    : '<div class="none">Нікого не знайдено (довідник веде адміністратор)</div>';
+  $('#msList').hidden = false;
+}
+$('#msInput').addEventListener('focus', renderMsList);
+$('#msInput').addEventListener('input', renderMsList);
+$('#msList').addEventListener('mousedown', e => {
+  const d = e.target.closest('[data-add]'); if (!d) return;
+  e.preventDefault();
+  const emp = LOOK.employees.find(x => x.id == d.dataset.add);
+  if (emp) SEL.push({id: emp.id, name: emp.name});
+  $('#msInput').value = ''; renderTags(); renderMsList();
+});
+$('#tags').addEventListener('click', e => {
+  const b = e.target.closest('[data-rm]'); if (!b) return;
+  SEL = SEL.filter(c => c.id != b.dataset.rm); renderTags();
+});
+$('#msInput').addEventListener('blur', () => setTimeout(() => $('#msList').hidden = true, 120));
+
+function signerOptions(o) {
+  const opts = ['<option value="">— не вказано —</option>'];
+  const list = LOOK.signers.filter(s => s.active || (o && s.id === o.signer_id));
+  list.forEach(s => opts.push(`<option value="${s.id}">${esc(s.name)}${s.position ? ' — ' + esc(s.position) : ''}</option>`));
+  if (o && o.signer_id && !list.some(s => s.id === o.signer_id)) opts.push(`<option value="${o.signer_id}">${esc(o.signer_name)}</option>`);
+  return opts.join('');
+}
+
+async function suggestNumber() {
+  if (editing || readOnly) return;
+  const type = $('#fTypeF').value, date = $('#fDate').value; if (!type || !date) return;
+  try {
+    const r = await api(`/api/next-number?type=${type}&date=${date}`);
+    $('#fNumber').placeholder = 'Автоматично: ' + r.number;
+    $('#numHint').textContent = 'Залиште порожнім — призначиться ' + r.number;
+  } catch (e) {}
+}
+function syncTitleReq() {
+  const res = $('#fStatusF').value === 'reserved';
+  $('#fTitle').required = !res;
+  $('#titleHint').textContent = res ? 'Для резерву номера назву можна не вказувати — додасте пізніше.' : '';
+}
+$('#fStatusF').addEventListener('change', syncTitleReq);
+function applyKind() {
+  syncTitleReq();
+  $('#fileRow').hidden = readOnly && !(CURO && CURO.has_file);
+}
+
+// ---- зв'язки з іншими наказами (у формі)
+let LINKS = [];
+function renderLinks() {
+  $('#linkList').innerHTML = LINKS.map((l, i) => `<div class="fitem"><span>${LINK_OUT[l.kind]} <b>№ ${esc(l.number)}</b> від ${fmtDate(l.date)}${l.title ? ' — <span class="muted">' + esc(l.title.length > 90 ? l.title.slice(0, 89) + '…' : l.title) + '</span>' : ''}</span>`
+    + (readOnly ? '' : `<button type="button" class="btn small" data-rml="${i}" title="Прибрати зв'язок">×</button>`) + '</div>').join('');
+  $('#linkAdd').hidden = readOnly; $('#lnHint').hidden = readOnly;
+  const inc = (CURO && editing) ? CURO.linked_by : [];
+  $('#lnIn').innerHTML = inc.map(l => `${LINK_IN[l.kind]} № ${esc(l.number)} від ${fmtDate(l.date)}`).join('<br>');
+  const cancelled = inc.some(l => l.kind === 'cancels');
+  $('#statusHint').textContent = cancelled ? 'Скасовано іншим наказом — у таблиці показується як «Втратив чинність».' : '';
+  $('#grpLinks').classList.toggle('ro-empty', readOnly && !LINKS.length && !inc.length);
+}
+$('#linkList').addEventListener('click', e => { const b = e.target.closest('[data-rml]'); if (b) { LINKS.splice(+b.dataset.rml, 1); renderLinks(); } });
+let lnTm;
+$('#lnNum').addEventListener('input', () => { clearTimeout(lnTm); lnTm = setTimeout(lnSearch, 200); });
+$('#lnNum').addEventListener('focus', () => { if ($('#lnNum').value.trim()) lnSearch(); });
+$('#lnNum').addEventListener('blur', () => setTimeout(() => $('#lnList').hidden = true, 150));
+$('#lnNum').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const f = $('#lnList [data-ln]'); if (f) f.dispatchEvent(new MouseEvent('mousedown', {bubbles: true})); } });
+let LNRES = [];
+async function lnSearch() {
+  const v = $('#lnNum').value.trim();
+  if (!v) { $('#lnList').hidden = true; return; }
+  try { LNRES = (await api('/api/order-search?num=' + encodeURIComponent(v) + '&type=' + encodeURIComponent($('#fTypeF').value))).orders; } catch (e) { LNRES = []; }
+  LNRES = LNRES.filter(o => o.id !== editing && !LINKS.some(l => l.id === o.id));
+  const kind = kindOf($('#fTypeF').value), many = META.registers.filter(r => r.kind === kind).length > 1;
+  $('#lnList').innerHTML = LNRES.length ? LNRES.map((o, i) => `<div data-ln="${i}">№ ${esc(o.number)} від ${fmtDate(o.date)}${many ? ' <small>(' + esc(o.reg) + ')</small>' : ''} — <small>${esc((o.title || 'без назви').slice(0, 100))}</small></div>`).join('')
+    : '<div class="none">Наказ з таким номером не знайдено</div>';
+  $('#lnList').hidden = false;
+}
+$('#lnList').addEventListener('mousedown', e => {
+  const d = e.target.closest('[data-ln]'); if (!d) return;
+  e.preventDefault();
+  const o = LNRES[+d.dataset.ln]; if (!o) return;
+  LINKS.push({id: o.id, kind: $('#lnKind').value, number: o.number, date: o.date, title: o.title});
+  $('#lnNum').value = ''; $('#lnList').hidden = true; renderLinks();
+});
+
+// ---- перетягування файлів у вікно наказу
+let dragDepth = 0;
+const canDrop = () => !readOnly && !$('#fileRow').hidden;
+const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+$('#dlg').addEventListener('dragenter', e => { if (!hasFiles(e) || !canDrop()) return; e.preventDefault(); dragDepth++; $('#fileRow').classList.add('drag'); });
+$('#dlg').addEventListener('dragover', e => { if (hasFiles(e) && canDrop()) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+$('#dlg').addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; $('#fileRow').classList.remove('drag'); } });
+$('#dlg').addEventListener('drop', e => {
+  dragDepth = 0; $('#fileRow').classList.remove('drag');
+  if (!hasFiles(e) || !canDrop()) return;
+  e.preventDefault();
+  NEWF.push(...e.dataTransfer.files); if (NEWF.length) OPV_SEL = 'n' + (NEWF.length - 1); renderFiles();
+  toast(`Додано файлів: ${e.dataTransfer.files.length} (збережуться після «Зберегти»)`);
+});
+// файл, кинутий повз вікно, не повинен відкриватися замість програми
+['dragover', 'drop'].forEach(t => window.addEventListener(t, e => { if (hasFiles(e) && !e.defaultPrevented) e.preventDefault(); }));
+$('#fTypeF').addEventListener('change', () => { applyKind(); suggestNumber(); renderOpv(); });
+$('#fDate').addEventListener('change', suggestNumber);
+
+let RMF = new Set(), NEWF = [];
+function renderFiles() {
+  const cur = (CURO && editing) ? CURO.files : [];
+  $('#curFiles').innerHTML =
+    cur.map(f => `<div class="fitem ${RMF.has(f.id) ? 'gone' : ''} ${OPV_SEL === 'o' + f.id ? 'pvon' : ''}"><a href="/api/files/${f.id}" target="_blank" data-pvo="${f.id}">${fileIcon(f.ext).replace('width="28" height="34"', 'width="22" height="27"')}<span class="n">${esc(f.name)}</span></a>`
+      + (readOnly ? '' : RMF.has(f.id) ? `<button type="button" class="btn small" data-undo="${f.id}">повернути</button>` : `<button type="button" class="btn small danger" data-rmf="${f.id}">прибрати</button>`) + '</div>').join('') +
+    NEWF.map((f, i) => `<div class="fitem ${OPV_SEL === 'n' + i ? 'pvon' : ''}"><button type="button" class="pvsel" data-pvn="${i}">${fileIcon((f.name.split('.').pop() || '').toLowerCase()).replace('width="28" height="34"', 'width="22" height="27"')}<span class="n">${esc(f.name)}</span></button> <span class="hint">(буде додано після збереження)</span><button type="button" class="btn small" data-rmn="${i}">×</button></div>`).join('');
+  renderOpv();
+}
+
+// ---- скан праворуч у вікні наказу (щоб вносити дані, дивлячись на документ)
+let OPV_SEL = null, OPV_SRC = null, OPV_URL = null, OPV_PAGE = null;
+function opvItems() {
+  const old = (CURO && editing ? CURO.files : []).filter(f => !RMF.has(f.id)).map(f => ({key: 'o' + f.id, name: f.name, ext: f.ext.toLowerCase(), id: f.id}));
+  const nw = NEWF.map((f, i) => ({key: 'n' + i, name: f.name, ext: (f.name.split('.').pop() || '').toLowerCase(), file: f}));
+  return old.concat(nw);
+}
+function renderOpv() {
+  const items = opvItems();
+  const on = items.length > 0;
+  $('#dlg').classList.toggle('withpv', on);
+  if (!on) { OPV_SEL = null; setOpvSrc(null); return; }
+  if (!items.some(x => x.key === OPV_SEL)) OPV_SEL = items[0].key;
+  const it = items.find(x => x.key === OPV_SEL);
+  $('#opvTabs').innerHTML = items.map(x => `<button type="button" data-k="${x.key}" class="${x.key === OPV_SEL ? 'on' : ''}" title="${esc(x.name)}">${esc(x.name)}</button>`).join('');
+  const office = EXT_OFFICE.includes(it.ext), direct = EXT_DIRECT.includes(it.ext), arch = EXT_ARCH.includes(it.ext);
+  // кнопки — лише для вже збереженого файлу (новий ще лежить у вас на комп'ютері)
+  $('#opvDl').hidden = !it.id; $('#opvOpen').hidden = !it.id || !(office || direct || arch);
+  if (it.id) { $('#opvDl').href = `/api/files/${it.id}?download=1`; $('#opvOpen').href = `/api/files/${it.id}/preview#navpanes=0&zoom=page-width&view=FitH`; }
+  if (it.id) {
+    if (office || direct || arch) setOpvSrc(`/api/files/${it.id}/preview#navpanes=0&zoom=page-width&view=FitH`, office ? 'Готуємо перегляд документа…' : arch ? 'Відкриваємо архів…' : 'Завантаження…');
+    else setOpvSrc(null, 'Перегляд цього формату недоступний.');
+  } else if (direct) setOpvSrc(it.file, 'Завантаження…');
+  else setOpvSrc(null, office ? 'Word, Excel і презентації можна буде переглянути після збереження наказу.' : arch ? 'Вміст архіву можна буде переглянути після збереження наказу.' : 'Перегляд цього формату недоступний.');
+}
+function setOpvSrc(src, msg) {
+  if (src === OPV_SRC) return;            // той самий файл — не перезавантажуємо
+  OPV_SRC = src;
+  if (OPV_URL) { URL.revokeObjectURL(OPV_URL); OPV_URL = null; }
+  if (OPV_PAGE) { URL.revokeObjectURL(OPV_PAGE); OPV_PAGE = null; }
+  const fr = $('#opvFrame'); fr.classList.remove('ready');
+  $('#opvMsg').textContent = msg || '';
+  if (!src) { fr.hidden = true; fr.src = 'about:blank'; return; }
+  fr.hidden = false;
+  if (src instanceof File) {
+    OPV_URL = URL.createObjectURL(src);
+    if ((src.type || '').startsWith('image/')) {   // зображення — по ширині панелі, як і збережені
+      const page = new Blob([`<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#e9ebef}img{display:block;width:100%;height:auto}</style><img src="${OPV_URL}" alt="">`], {type: 'text/html'});
+      OPV_PAGE = URL.createObjectURL(page); fr.src = OPV_PAGE;
+    } else fr.src = OPV_URL + '#navpanes=0&zoom=page-width&view=FitH';
+  }
+  else fr.src = src;
+}
+$('#opvFrame').addEventListener('load', () => { if ($('#opvFrame').getAttribute('src') !== 'about:blank') $('#opvFrame').classList.add('ready'); });
+$('#opvTabs').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) { OPV_SEL = b.dataset.k; renderFiles(); } });
+$('#dlg').addEventListener('close', () => { OPV_SEL = null; setOpvSrc(null); $('#dlg').classList.remove('withpv'); });
+$('#curFiles').addEventListener('click', e => {
+  const a = e.target.closest('a[data-pvo]');
+  if (a && $('#dlg').classList.contains('withpv') && !RMF.has(+a.dataset.pvo) && !(e.ctrlKey || e.metaKey || e.shiftKey)) {
+    e.preventDefault(); OPV_SEL = 'o' + a.dataset.pvo; renderFiles(); return;
+  }
+  const pn = e.target.closest('[data-pvn]');
+  if (pn) { OPV_SEL = 'n' + pn.dataset.pvn; renderFiles(); return; }
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.rmf) RMF.add(+b.dataset.rmf);
+  else if (b.dataset.undo) RMF.delete(+b.dataset.undo);
+  else if (b.dataset.rmn) NEWF.splice(+b.dataset.rmn, 1);
+  renderFiles();
+});
+$('#btnAttach').innerHTML = CLIP_SM + ' Прикріпити файли';
+$('#btnAttach').onclick = () => $('#fFile').click();
+$('#fFile').addEventListener('change', () => { NEWF.push(...$('#fFile').files); $('#fFile').value = ''; if (NEWF.length) OPV_SEL = 'n' + (NEWF.length - 1); renderFiles(); });
+function openOrder(o) {
+  editing = o ? o.id : null; CURO = o;
+  readOnly = o ? !o.can_edit : false;
+  const form = $('#form'); form.reset(); $('#err').textContent = '';
+  const types = Object.fromEntries(META.registers.filter(r => o ? r.key === o.type : canEditType(r.key)).map(r => [r.key, r.short]));
+  fillSelect($('#fTypeF'), types);
+  fillSelect($('#fStatusF'), META.statuses);
+  $('#fSigner').innerHTML = signerOptions(o);
+  $('#fTypeF').value = o ? o.type : (canEditType(CUR) ? CUR : Object.keys(types)[0]);
+  $('#fTypeF').disabled = !!o || readOnly;
+  $('#fDate').value = o ? o.date : localToday();
+  $('#fNumber').value = o ? o.number : ''; $('#fNumber').placeholder = 'Автоматично';
+  $('#numHint').textContent = o ? (readOnly ? '' : 'Номер можна змінити вручну') : 'Залиште порожнім — призначиться наступний номер';
+  $('#fStatusF').value = o ? o.status : 'active';
+  $('#fTitle').value = o ? o.title : '';
+  $('#fSigner').value = o && o.signer_id ? o.signer_id : '';
+  SEL = o ? o.creators.map(c => ({...c})) : []; renderTags(); $('#msList').hidden = true; $('#msInput').value = '';
+  ['#fDate', '#fNumber', '#fStatusF', '#fTitle', '#fSigner'].forEach(s => $(s).disabled = readOnly);
+  $('#dlgTitle').textContent = o ? `Наказ № ${o.number} від ${fmtDate(o.date)}${readOnly ? '' : ''}` : 'Новий наказ';
+  $('#btnDelete').hidden = !o || readOnly;
+  $('#btnSave').hidden = readOnly;
+  $('#btnCancel').textContent = readOnly ? 'Закрити' : 'Скасувати';
+  RMF = new Set(); NEWF = []; renderFiles();
+  LINKS = o ? o.links.map(l => ({...l})) : []; $('#lnNum').value = ''; $('#lnList').hidden = true; renderLinks();
+  $('#btnHist').hidden = !(o && ME && ME.is_admin);
+  $('#btnAttach').hidden = readOnly;
+  $('#auditInfo').textContent = o && ME && o.created_by_name
+    ? `Внесено: ${o.created_by_name}, ${o.created_at}` + (o.updated_by_name && o.updated_at !== o.created_at ? ` · Змінено: ${o.updated_by_name}, ${o.updated_at}` : '') : '';
+  applyKind();
+  $('#dlg').showModal();
+  suggestNumber();
+  if (!readOnly) $('#fTitle').focus();
+}
+
+$('#form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData();
+  fd.append('type', $('#fTypeF').value); fd.append('date', $('#fDate').value);
+  fd.append('number', $('#fNumber').value); fd.append('status', $('#fStatusF').value);
+  fd.append('title', $('#fTitle').value);
+  fd.append('signer_id', $('#fSigner').value);
+  SEL.forEach(c => fd.append('creators', c.id));
+  NEWF.forEach(f => fd.append('files', f));
+  RMF.forEach(id => fd.append('remove_files', id));
+  LINKS.forEach(l => fd.append('links', l.kind + ':' + l.id));
+  try {
+    const o = await api(editing ? `/api/orders/${editing}` : '/api/orders', {method: editing ? 'PUT' : 'POST', body: fd});
+    $('#dlg').close(); toast(editing ? 'Збережено' : `Наказ № ${o.number} створено`); await loadFilterOptions(); await load(); if (editing && editing === PREV) syncPreview(true);
+    refreshChecks();
+  } catch (err) { $('#err').textContent = err.message; }
+});
+// підтвердження паролем: action(pw) кидає помилку — вікно лишається з повідомленням
+let DEL_ACTION = null;
+function confirmPassword(head, html, btn, action) {
+  $('#delHead').textContent = head; $('#delText').innerHTML = html; $('#delBtn').textContent = btn;
+  DEL_ACTION = action; $('#delPw').value = ''; $('#delErr').textContent = '';
+  $('#dlgDel').showModal(); $('#delPw').focus();
+}
+$('#formDel').addEventListener('submit', async e => {
+  e.preventDefault();
+  try { await DEL_ACTION($('#delPw').value); $('#dlgDel').close(); }
+  catch (err) { $('#delErr').textContent = err.message; $('#delPw').select(); }
+});
+const delJson = pw => ({method: 'DELETE', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({password: pw})});
+$('#btnDelete').onclick = () => confirmPassword('Видалити наказ?',
+  `Наказ № ${esc(CURO.number)} від ${fmtDate(CURO.date)} буде переміщено в кошик разом із файлами. Протягом 30 днів адміністратор може його відновити, потім наказ зникне остаточно. Номер одразу стає вільним.<br>${kindOf(CURO.type) === 'main' ? 'Якщо наказ просто втратив чинність — краще змініть статус на «Втратив чинність».<br>' : ''}Для підтвердження введіть свій пароль.`,
+  'Видалити', async pw => {
+    const id = editing, num = CURO.number;
+    await api(`/api/orders/${id}`, delJson(pw));
+    $('#dlg').close(); await loadFilterOptions(); await load(); refreshChecks();
+    toast(`Наказ № ${num} переміщено в кошик`, null, {label: 'Повернути', run: async () => {
+      try { await api(`/api/orders/${id}/undo-delete`, {method: 'POST'}); toast(`Наказ № ${num} повернуто`); FLASH = id; await loadFilterOptions(); await load(); FLASH = null; refreshChecks(); }
+      catch (e) { toastErr(e); }
+    }});
+  });
+$('#btnHist').onclick = () => openAudit({order: editing, title: `Історія наказу № ${CURO.number} від ${fmtDate(CURO.date)}`});
+
+// ---------------------------------------------------------------- довідники
+async function openDir() { await loadDir(); $('#dlgDir').showModal(); }
+async function loadDir() {
+  DIR.emp = (await api('/api/employees')).employees;
+  DIR.sig = (await api('/api/signers')).signers;
+  DIR.reg = (await api('/api/registers')).registers;
+  LOOK = await api('/api/lookups');
+  renderDir();
+}
+document.querySelectorAll('#dlgDir .tab').forEach(t => t.onclick = () => {
+  dirTab = t.dataset.tab; document.querySelectorAll('#dlgDir .tab').forEach(x => x.classList.toggle('on', x === t)); renderDir();
+});
+const chk = (v, f) => `<input type="checkbox" data-f="${f}" ${v ? 'checked' : ''}>`;
+function renderDir() {
+  const body = $('#dirBody');
+  if (dirTab === 'emp') {
+    $('#dirHint').textContent = 'Пароль потрібен лише тим, хто має роль. Порожнє поле пароля = без змін. Тих, хто вже є в наказах, можна лише вимкнути («Активний»).';
+    body.innerHTML = `<table class="dir"><thead><tr><th>ПІП</th><th class="c">Адмін.</th><th class="c">Секретар</th><th class="c">Кадровик</th><th class="c">Переглядач</th><th>Пароль</th><th class="c">Активний</th><th></th></tr></thead><tbody>
+      <tr class="new" data-id="new"><td><input type="text" data-f="name" placeholder="Новий співробітник: ПІП"></td>
+        <td class="c">${chk(0, 'is_admin')}</td><td class="c">${chk(0, 'is_secretary')}</td><td class="c">${chk(0, 'is_hr')}</td><td class="c">${chk(0, 'is_viewer')}</td>
+        <td><input type="password" data-f="password" placeholder="пароль" autocomplete="new-password"></td><td class="c">${chk(1, 'active')}</td>
+        <td><button class="btn small primary" data-save>Додати</button><div class="row-err"></div></td></tr>
+      ${DIR.emp.map(e => `<tr data-id="${e.id}"><td><input type="text" data-f="name" value="${esc(e.name)}"></td>
+        <td class="c">${chk(e.is_admin, 'is_admin')}</td><td class="c">${chk(e.is_secretary, 'is_secretary')}</td><td class="c">${chk(e.is_hr, 'is_hr')}</td><td class="c">${chk(e.is_viewer, 'is_viewer')}</td>
+        <td><input type="password" data-f="password" placeholder="${e.has_password ? '••••• (без змін)' : 'не задано'}" autocomplete="new-password"></td>
+        <td class="c">${chk(e.active, 'active')}</td>
+        <td style="white-space:nowrap"><button class="btn small" data-save>Зберегти</button> <button class="btn small danger" data-del title="${e.used ? 'Використовується в наказах: ' + e.used : 'Видалити'}">✕</button><div class="row-err"></div></td></tr>`).join('')}
+      </tbody></table>`;
+  } else if (dirTab === 'reg') {
+    $('#dirHint').textContent = 'Номер наказу = порядковий номер у межах реєстру й року + суфікс (напр. 12-к). Основний реєстр бачать усі, кадрові — лише авторизовані.';
+    const kindName = k => k === 'main' ? 'Основний' : 'Кадровий';
+    body.innerHTML = `<table class="dir reg"><thead><tr><th>Вкладка</th><th>Повна назва (заголовок сторінки)</th><th>Суфікс</th><th>Вид</th><th class="c">Наказів</th><th></th></tr></thead><tbody>
+      <tr class="new" data-id="new"><td><input type="text" data-f="short" placeholder="Коротка назва"></td>
+        <td><textarea data-f="title" rows="2" placeholder="Новий реєстр: повна назва"></textarea></td>
+        <td><input type="text" data-f="suffix" placeholder="напр. -к"></td>
+        <td><select data-f="kind" style="width:100%"><option value="hr">Кадровий</option><option value="main">Основний</option></select></td><td></td>
+        <td><button class="btn small primary" data-save>Додати</button><div class="row-err"></div></td></tr>
+      ${DIR.reg.map(r => `<tr data-id="${esc(r.key)}"><td><input type="text" data-f="short" value="${esc(r.short)}"></td>
+        <td><textarea data-f="title" rows="3">${esc(r.title)}</textarea></td>
+        <td><input type="text" data-f="suffix" value="${esc(r.suffix)}"></td>
+        <td>${kindName(r.kind)}</td><td class="c">${r.used}</td>
+        <td style="white-space:nowrap"><button class="btn small" data-save>Зберегти</button> <button class="btn small danger" data-del title="${r.used ? 'У реєстрі є накази' : 'Видалити'}">✕</button><div class="row-err"></div></td></tr>`).join('')}
+      </tbody></table>`;
+  } else {
+    $('#dirHint').textContent = 'Список для поля «Хто підписав» (наприклад, директор, заступник).';
+    body.innerHTML = `<table class="dir"><thead><tr><th>ПІП</th><th>Посада</th><th class="c">Активний</th><th></th></tr></thead><tbody>
+      <tr class="new" data-id="new"><td><input type="text" data-f="name" placeholder="Новий підписант: ПІП"></td>
+        <td><input type="text" data-f="position" placeholder="Посада (необов'язково)"></td><td class="c">${chk(1, 'active')}</td>
+        <td><button class="btn small primary" data-save>Додати</button><div class="row-err"></div></td></tr>
+      ${DIR.sig.map(s => `<tr data-id="${s.id}"><td><input type="text" data-f="name" value="${esc(s.name)}"></td>
+        <td><input type="text" data-f="position" value="${esc(s.position)}"></td><td class="c">${chk(s.active, 'active')}</td>
+        <td style="white-space:nowrap"><button class="btn small" data-save>Зберегти</button> <button class="btn small danger" data-del title="${s.used ? 'Указаний у наказах: ' + s.used : 'Видалити'}">✕</button><div class="row-err"></div></td></tr>`).join('')}
+      </tbody></table>`;
+  }
+}
+$('#dirBody').addEventListener('click', async e => {
+  const tr = e.target.closest('tr'); if (!tr) return;
+  const base = dirTab === 'emp' ? '/api/employees' : dirTab === 'sig' ? '/api/signers' : '/api/registers';
+  const errBox = tr.querySelector('.row-err'); const id = tr.dataset.id;
+  if (e.target.matches('[data-save]')) {
+    const obj = {};
+    tr.querySelectorAll('[data-f]').forEach(i => obj[i.dataset.f] = i.type === 'checkbox' ? i.checked : i.value);
+    try { await api(id === 'new' ? base : `${base}/${id}`, {method: id === 'new' ? 'POST' : 'PUT', json: obj});
+      toast(id === 'new' ? 'Додано' : 'Збережено'); await loadDir();
+      if (dirTab === 'reg') await refreshMeta(); else if (id !== 'new') { await loadFilterOptions(); await load(); } }
+    catch (err) { errBox.textContent = err.message; }
+  } else if (e.target.matches('[data-del]')) {
+    if (!confirm('Видалити запис із довідника?')) return;
+    try { await api(`${base}/${id}`, {method: 'DELETE'}); toast('Видалено'); await loadDir(); if (dirTab === 'reg') await refreshMeta(); }
+    catch (err) { errBox.textContent = err.message; }
+  }
+});
+
+// ---------------------------------------------------------------- журнал дій (адміністратор)
+const ACTIONS = {create: 'Створено', update: 'Змінено', delete: 'Видалено в кошик', restore: 'Відновлено з кошика',
+  purge: 'Видалено остаточно', purge_auto: 'Видалено остаточно (30 днів)', import: 'Імпорт',
+  emp_create: 'Співробітник: додано', emp_update: 'Співробітник: змінено', emp_delete: 'Співробітник: видалено',
+  sig_create: 'Підписант: додано', sig_update: 'Підписант: змінено', sig_delete: 'Підписант: видалено',
+  reg_create: 'Реєстр: додано', reg_update: 'Реєстр: змінено', reg_delete: 'Реєстр: видалено',
+  password: 'Зміна пароля', lock: 'Блокування входу', settings: 'Налаштування'};
+let AU = {order: null, entries: [], more: false};
+async function openAudit(opts = {}) {
+  AU = {order: opts.order || null, entries: [], more: false};
+  $('#auTitle').textContent = opts.title || 'Журнал дій';
+  $('#auQ').value = ''; $('#auGroup').value = '';
+  $('#auAll').hidden = !AU.order;
+  await loadAudit(false);
+  if (!$('#dlgAudit').open) $('#dlgAudit').showModal();
+}
+async function loadAudit(append) {
+  const p = new URLSearchParams();
+  if (AU.order) p.set('order', AU.order);
+  if ($('#auQ').value.trim()) p.set('q', $('#auQ').value.trim());
+  if ($('#auGroup').value) p.set('group', $('#auGroup').value);
+  if (append && AU.entries.length) p.set('before', AU.entries[AU.entries.length - 1].id);
+  try {
+    const r = await api('/api/audit?' + p);
+    AU.entries = append ? AU.entries.concat(r.entries) : r.entries; AU.more = r.more;
+  } catch (e) { return toastErr(e); }
+  const q = $('#auQ').value.trim();
+  $('#auBody').innerHTML = AU.entries.length ? `<table class="alog"><thead><tr><th>Коли</th><th>Хто</th><th>Дія</th><th>Наказ</th><th>Подробиці</th></tr></thead><tbody>` +
+    AU.entries.map(a => `<tr><td class="date">${fmtDate(a.ts.slice(0, 10))} ${a.ts.slice(11, 16)}</td><td>${hl(a.user_name, q)}</td><td>${esc(ACTIONS[a.action] || a.action)}</td>
+      <td>${a.number ? `${a.reg_short && a.reg_short !== (regOf(CUR) || {}).short ? '<span class="muted">' + esc(a.reg_short) + '</span><br>' : ''}№ ${hl(a.number, q)}${a.year ? ' / ' + a.year : ''}` : ''}</td>
+      <td class="det">${hl(a.details, q)}</td></tr>`).join('') + '</tbody></table>'
+    : '<div class="empty">Записів немає</div>';
+  $('#auMore').hidden = !AU.more;
+  $('#auHint').textContent = AU.entries.length ? `Показано записів: ${AU.entries.length}${AU.more ? ' (є ще)' : ''}` : '';
+}
+let auTm;
+$('#auQ').addEventListener('input', () => { clearTimeout(auTm); auTm = setTimeout(() => loadAudit(false), 250); });
+$('#auGroup').addEventListener('change', () => loadAudit(false));
+$('#auMore').onclick = () => loadAudit(true);
+$('#auAll').onclick = () => openAudit();
+
+// ---------------------------------------------------------------- кошик (адміністратор)
+let TRASH = [];
+async function openTrash() {
+  await loadTrash();
+  if (!$('#dlgTrash').open) $('#dlgTrash').showModal();
+}
+async function loadTrash() {
+  let r; try { r = await api('/api/trash'); } catch (e) { return toastErr(e); }
+  TRASH = r.orders;
+  $('#trHint').textContent = `Видалені накази зберігаються тут ${r.days} днів разом із файлами, потім видаляються остаточно.`;
+  $('#trBody').innerHTML = TRASH.length ? `<table class="dir"><thead><tr><th>Реєстр</th><th>№</th><th>Дата</th><th>Назва</th><th class="c">Файлів</th><th>Видалив</th><th>Видалиться</th><th></th></tr></thead><tbody>` +
+    TRASH.map(o => `<tr data-id="${o.id}"><td>${esc(o.reg)}</td><td class="num">${esc(o.number)}</td><td class="date">${fmtDate(o.date)}</td><td>${o.title ? esc(o.title) : '<i>без назви</i>'}</td>
+      <td class="c">${o.files}</td><td>${esc(o.deleted_by_name || '')}<br><span class="muted">${fmtDate(o.deleted_at.slice(0, 10))} ${o.deleted_at.slice(11, 16)}</span></td><td class="date">${fmtDate(o.purge_on)}</td>
+      <td style="white-space:nowrap"><button class="btn small primary" data-restore>Відновити</button> <button class="btn small danger" data-purge title="Видалити остаточно">✕</button></td></tr>`).join('') + '</tbody></table>'
+    : '<div class="empty">Кошик порожній</div>';
+}
+$('#trBody').addEventListener('click', async e => {
+  const tr = e.target.closest('tr[data-id]'); if (!tr) return;
+  const o = TRASH.find(x => x.id == tr.dataset.id); if (!o) return;
+  if (e.target.matches('[data-restore]')) {
+    try { await api(`/api/trash/${o.id}/restore`, {method: 'POST'}); toast(`Наказ № ${o.number} відновлено`); await loadTrash(); await loadFilterOptions(); await load(); refreshChecks(); }
+    catch (err) { toastErr(err); }
+  } else if (e.target.matches('[data-purge]')) {
+    confirmPassword('Видалити остаточно?', `Наказ № ${esc(o.number)} від ${fmtDate(o.date)} і його файли (${o.files}) буде стерто назавжди. Відновити буде неможливо.<br>Для підтвердження введіть свій пароль.`,
+      'Видалити назавжди', async pw => { await api(`/api/trash/${o.id}`, delJson(pw)); toast('Видалено остаточно'); await loadTrash(); });
+  }
+});
+
+// ---------------------------------------------------------------- перевірка реєстру
+let CHK = null;
+async function refreshChecks(autoOpen) {
+  const b = $('#chkCount'); if (!b || !ME) return;
+  try { CHK = await api('/api/checks'); } catch (e) { return; }
+  b.hidden = !CHK.total; b.textContent = CHK.total > 999 ? '999+' : CHK.total;
+  if (autoOpen && CHK.due && !document.querySelector('dialog[open]')) openChecks(CHK);
+}
+async function openChecks(data) {
+  if (!$('#chkYear').options.length || !data) {
+    try {
+      const info = (await api('/api/export-info')).registers;
+      const ys = [...new Set(info.flatMap(r => r.years.map(y => y.year)).concat([new Date().getFullYear()]))].sort((a, b) => b - a);
+      $('#chkYear').innerHTML = '<option value="">Поточний період</option>' + ys.map(y => `<option value="${y}">${y}</option>`).join('');
+    } catch (e) {}
+  }
+  if (!data) { $('#chkYear').value = ''; await loadChecks(); } else { $('#chkYear').value = ''; renderChecks(data); }
+  if (!$('#dlgChk').open) $('#dlgChk').showModal();
+}
+async function loadChecks() {
+  const y = $('#chkYear').value;
+  try { const d = await api('/api/checks' + (y ? '?year=' + y : '')); if (!y) CHK = d; renderChecks(d); } catch (e) { toastErr(e); }
+}
+$('#chkYear').addEventListener('change', loadChecks);
+function renderChecks(d) {
+  const row = (it, o) => `<tr><td class="num"><a class="go" data-go="${o.id}" data-type="${esc(it.key)}" data-num="${esc(o.number)}" data-date="${esc(o.date)}">${esc(o.number)}</a></td><td class="date">${fmtDate(o.date)}</td><td>${o.title ? esc(o.title) : '<i>без назви</i>'}</td></tr>`;
+  const tbl = (it, list) => `<table class="dir"><tbody>${list.map(o => row(it, o)).join('')}</tbody></table>`;
+  const cloud = d.cloud_warn ? `<div class="row" style="color:var(--danger)"><b>Копія в хмару:</b> ${esc(d.cloud_warn)}. Перевірте на сервері: <code>journalctl -u nakazy-backup -n 50</code></div>` : '';
+  $('#chkBody').innerHTML = cloud + (!d.items.length
+    ? `<div class="ok-msg">✓ Усе гаразд за ${d.years.join(' і ')} рік: пропущених номерів, наказів без файлів і давніх резервів немає.</div>`
+    : d.items.map(it => `<h3>${esc(it.short)} · ${it.year}</h3>` +
+      (it.gap_count ? `<div class="row"><b>Пропущені номери (${it.gap_count}):</b> ${esc(it.gaps.join(', '))}${it.gaps.length < it.gap_count && it.gaps.length >= 100 ? ' …' : ''}</div>` : '') +
+      (it.reserves.length ? `<div class="row"><b>Резерв довше ${d.stale_days} днів (${it.reserves.length}):</b></div>` + tbl(it, it.reserves) : '') +
+      (it.no_files_count ? `<div class="row"><b>Без прикріпленого файлу (${it.no_files_count}):</b></div>` + tbl(it, it.no_files) + (it.no_files.length < it.no_files_count ? `<div class="hint">Показано перші ${it.no_files.length}.</div>` : '') : '')
+    ).join(''));
+}
+$('#chkBody').addEventListener('click', e => {
+  const a = e.target.closest('a[data-go]'); if (!a) return;
+  e.preventDefault(); $('#dlgChk').close();
+  goToOrder(+a.dataset.go, a.dataset.type, a.dataset.num, a.dataset.date, true);
+});
+$('#dlgChk').addEventListener('close', () => {
+  if (CHK && CHK.due) { CHK.due = false; api('/api/checks/seen', {method: 'POST'}).catch(() => {}); }
+});
+
+// ---------------------------------------------------------------- налаштування (адміністратор)
+async function openSettings() {
+  let r; try { r = await api('/api/settings'); } catch (e) { return toastErr(e); }
+  $('#setAccess').innerHTML = Object.entries(r.options).map(([k, v]) =>
+    `<label class="radio"><input type="radio" name="pa" value="${k}" ${k === r.public_access ? 'checked' : ''}> ${esc(v)}</label>`).join('');
+  $('#setErr').textContent = '';
+  renderCloud(r);
+  // сертифікат HTTPS (є лише коли HTTPS увімкнено)
+  $('#setCa').hidden = !r.ca;
+  if (r.ca) $('#setCa').innerHTML = `<label>Сертифікат HTTPS</label>
+    <div class="hint" style="margin:0 0 8px">Щоб браузер довіряв сайту, кореневий сертифікат встановлюють один раз на кожен комп'ютер:
+      двічі клацнути файл → «Установить сертификат» → «Локальный компьютер» → «Поместить все сертификаты в следующее хранилище» →
+      «Доверенные корневые центры сертификации» → Готово; потім перезапустити браузер. Або від імені адміністратора: <code>certutil -addstore -f Root nakazy-ca.crt</code>.</div>
+    <a class="btn small" href="/api/ca.crt">⬇ Завантажити сертифікат</a>
+    <div class="hint" style="margin-top:8px">Відбиток для звірки (у Windows: властивості сертифіката → «Состав» → «Отпечаток»):<br>
+      SHA-1: <code style="word-break:break-all">${esc(r.ca.sha1)}</code><br>SHA-256: <code style="word-break:break-all">${esc(r.ca.sha256)}</code></div>
+    <div class="hint">Посилання без входу <code>http://${esc(location.hostname)}/nakazy-ca.crt</code>: ${r.ca_public
+      ? "<b>відкрите</b> — лише поки адміністратор не змінив початковий пароль (для першого комп'ютера)."
+      : 'закрите — сертифікат видається тільки тут.'}</div>`;
+  $('#dlgSet').showModal();
+}
+$('#formSet').addEventListener('submit', async e => {
+  e.preventDefault();
+  const body = {public_access: (document.querySelector('#setAccess input:checked') || {}).value};
+  if ($('#bkTime')) { body.backup_time = $('#bkTime').value; body.backup_enabled = $('#bkOn').checked; }
+  try { await api('/api/settings', {method: 'PUT', json: body}); $('#dlgSet').close(); toast('Налаштування збережено'); await init(); }
+  catch (err) { $('#setErr').textContent = err.message; }
+});
+
+// ---- копія в хмару: стан, розклад, «зробити зараз», журнал останнього запуску
+let CLOUD_POLL = null;
+function renderCloud(r) {
+  const c = r.cloud, b = r.backup;
+  clearTimeout(CLOUD_POLL);
+  if (!c) {   // на сервері ще не запускали backup_gdrive.sh --setup
+    $('#setCloud').hidden = false;
+    $('#setCloud').innerHTML = `<label>Копія в Google Диск</label><div class="hint" style="margin:0">Ще не налаштовано. Один раз на сервері виконайте
+      <code>./backup_gdrive.sh --setup</code> (README, розділ «Копія в Google Диск») — далі розклад і запуск керуються тут.</div>`;
+    return;
+  }
+  const busy = c.running || b.pending;
+  const state = c.running ? '⏳ Виконується зараз…' : b.pending ? '⏳ Запит надіслано — сервер почне протягом 5 хвилин…'
+    : c.ok ? (c.stale ? '⚠ Давно не робилась.' : '✓ Працює.') : '✗ Остання спроба не вдалася.';
+  const color = busy ? 'var(--muted)' : c.ok && !c.stale ? 'var(--ok)' : 'var(--danger)';
+  $('#setCloud').hidden = false;
+  $('#setCloud').innerHTML = `<label>Копія в Google Диск</label>
+    <div class="hint" style="margin:0 0 8px;color:${color}">${state}${busy ? '' : ` ${fmtDate(c.time.slice(0, 10))} ${c.time.slice(11, 16)} — ${esc(c.message)}`}</div>
+    <div class="bkrow"><label class="radio" style="margin:0"><input type="checkbox" id="bkOn" ${b.enabled ? 'checked' : ''}> щодня о</label>
+      <input type="time" id="bkTime" value="${esc(b.time)}" required>
+      <button type="button" class="btn small" id="bkRun" ${busy ? 'disabled' : ''}>Зробити копію зараз</button></div>
+    <div class="hint">Час і перемикач застосовуються після «Зберегти». Якщо в цей час сервер вимкнено — копія зробиться після ввімкнення.</div>
+    ${b.log ? `<details class="bklog"><summary>Журнал останньої копії</summary><pre>${esc(b.log)}</pre></details>` : ''}`;
+  $('#bkRun').onclick = async () => {
+    try { await api('/api/backup/run', {method: 'POST'}); toast('Запит надіслано: сервер почне копію протягом 5 хвилин'); await refreshCloud(); }
+    catch (err) { toastErr(err); }
+  };
+  if (busy) CLOUD_POLL = setTimeout(refreshCloud, 15000);   // поки йде копія — оновлюємо стан
+}
+async function refreshCloud() {
+  if (!$('#dlgSet').open) return;
+  const keep = $('#bkTime') ? {t: $('#bkTime').value, on: $('#bkOn').checked} : null;
+  try { const r = await api('/api/settings'); renderCloud(r); if (keep && $('#bkTime')) { $('#bkTime').value = keep.t; $('#bkOn').checked = keep.on; } } catch (e) {}
+}
+$('#dlgSet').addEventListener('close', () => clearTimeout(CLOUD_POLL));
+
+// ---------------------------------------------------------------- щільність таблиці
+function applyDensity(c) {
+  document.body.classList.toggle('compact', c);
+  $('#btnDensity').textContent = c ? '☰ Звичайно' : '≡ Компактно';
+  $('#btnDensity').title = c ? 'Звичайні відступи в таблиці' : 'Щільніша таблиця: більше наказів на екрані';
+}
+let COMPACT = false; try { COMPACT = localStorage.getItem('compact') === '1'; } catch (e) {}
+applyDensity(COMPACT);
+$('#btnDensity').onclick = () => { COMPACT = !COMPACT; applyDensity(COMPACT); try { localStorage.setItem('compact', COMPACT ? '1' : '0'); } catch (e) {} requestAnimationFrame(checkMore); };
+
+// ---------------------------------------------------------------- довідка
+let HELP = null, helpTab = 'all';
+async function openHelp() {
+  HELP = await api('/api/help');
+  $('#helpVer').textContent = 'версія ' + HELP.version;
+  // за замовчуванням відкриваємо розділ, що найбільше відповідає ролі
+  helpTab = ME ? (ME.is_admin ? 'all' : (ME.is_secretary ? 'sec' : (ME.is_hr ? 'hr' : 'all'))) : 'all';
+  if (!HELP.sections.some(x => x.id === helpTab)) helpTab = 'all';
+  renderHelp();
+  $('#dlgHelp').showModal();
+}
+function renderHelp() {
+  const tabs = HELP.sections.map(x => ({id: x.id, title: x.title}));
+  if (HELP.changelog.length) tabs.push({id: 'log', title: 'Історія змін'});
+  $('#helpTabs').innerHTML = tabs.map(t => `<button type="button" class="tab ${t.id === helpTab ? 'on' : ''}" data-htab="${t.id}">${esc(t.title)}</button>`).join('');
+  $('#helpTabs').hidden = tabs.length < 2;
+  const sec = HELP.sections.find(x => x.id === helpTab);
+  $('#helpBody').innerHTML = sec ? sec.html
+    : HELP.changelog.map(v => `<div class="logentry"><h4>Версія ${esc(v.version)} — ${esc(v.title)}<span>${fmtDate(v.date)}</span></h4><ul>${v.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('');
+  $('#helpBody').scrollTop = 0;
+}
+$('#helpTabs').addEventListener('click', e => { const t = e.target.closest('[data-htab]'); if (t) { helpTab = t.dataset.htab; renderHelp(); } });
+
+// ---------------------------------------------------------------- імпорт
+$('#formImp').addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData(); fd.append('file', $('#impFile').files[0]); fd.append('default_type', $('#impType').value);
+  $('#impResult').textContent = 'Імпортую…';
+  try {
+    const r = await api('/api/import', {method: 'POST', body: fd});
+    $('#impResult').innerHTML = `<b style="color:var(--ok)">Імпортовано: ${r.imported}</b>, пропущено дублікатів: ${r.skipped}. ` +
+      `Нових у довідниках: співробітників ${r.new_employees}, підписантів ${r.new_signers}.` +
+      (r.problems.length ? `<div class="hint" style="color:var(--danger)">${r.problems.map(esc).join('<br>')}</div>` : '');
+    LOOK = await api('/api/lookups'); await loadFilterOptions(); await load();
+  } catch (err) { $('#impResult').innerHTML = `<span style="color:var(--danger)">${esc(err.message)}</span>`; }
+});
+
+init().catch(toastErr);
+</script>
+</body>
+</html>

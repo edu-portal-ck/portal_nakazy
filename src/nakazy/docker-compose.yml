@@ -1,0 +1,19 @@
+services:
+  nakazy:
+    build: .
+    container_name: nakazy
+    restart: unless-stopped
+    init: true   # прибирає завершені допоміжні процеси LibreOffice
+    ports:
+      - "${HTTP_PORT:-80}:8000"   # зовнішній порт; 80 — адреса без номера порту. Змінити: HTTP_PORT у файлі .env
+    volumes:
+      - ./data:/data
+    environment:
+      TZ: ${TIMEZONE:-Europe/Kyiv}
+      # Пароль початкового адміністратора (діє лише при першому запуску, на порожній базі).
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-admin}
+    logging:   # журнал контейнера не росте безмежно: до 3 файлів по 10 МБ
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

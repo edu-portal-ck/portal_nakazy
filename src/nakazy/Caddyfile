@@ -1,0 +1,42 @@
+# Caddy для «Реєстру наказів» (вмикається через docker-compose.https.yml).
+# SITE_ADDRESS — IP або ім'я сервера; CADDY_TLS — internal (власний сертифікат, для локальної мережі)
+# або e-mail (сертифікат Let's Encrypt, лише якщо ім'я — справжній домен, доступний з інтернету).
+{
+	skip_install_trust
+	auto_https disable_redirects
+	# браузери не надсилають ім'я (SNI), коли сайт відкрито за IP — тоді беремо сертифікат для SITE_ADDRESS
+	default_sni {$SITE_ADDRESS}
+}
+
+# По HTTP: кореневий сертифікат для першого комп'ютера (видає програма, лише до зміни початкового пароля
+# адміністратора; далі — Адміністрування → Налаштування), решта — переадресація на HTTPS
+http://{$SITE_ADDRESS} {
+	handle /nakazy-ca.crt {
+		reverse_proxy nakazy:8000
+	}
+	handle {
+		# тимчасова (302): браузери її не запам'ятовують, тож вимкнення HTTPS чи перевстановлення не «застрягає» в кеші
+		redir https://{host}:{$HTTPS_PORT}{uri} 302
+	}
+}
+
+# Лише для програми, всередині мережі Docker (порт не опубліковано): кореневий сертифікат.
+# На будь-який шлях віддається тільки root.crt — секретний ключ так отримати неможливо.
+http://:8081 {
+	root * /data/caddy/pki/authorities/local
+	rewrite * /root.crt
+	file_server
+}
+
+https://{$SITE_ADDRESS} {
+	tls {$CADDY_TLS}
+	request_body {
+		max_size 4GB
+	}
+	reverse_proxy nakazy:8000 {
+		transport http {
+			read_timeout 10m
+			write_timeout 10m
+		}
+	}
+}

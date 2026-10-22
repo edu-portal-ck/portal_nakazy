@@ -1,0 +1,8 @@
+data
+backups
+caddy
+*.zip
+.env
+.git
+__pycache__
+.backup-work

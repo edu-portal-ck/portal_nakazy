@@ -1,0 +1,5 @@
+Flask>=3.0
+openpyxl>=3.1
+gunicorn>=22.0
+py7zr>=0.20
+libarchive-c>=5.0

@@ -1,0 +1,13 @@
+# збірки
+/release/
+/nakazy.zip
+# робочі дані сервера — ніколи не в репозиторій
+data/
+backups/
+caddy/
+.backup-work/
+.env
+# локальні службові скрипти
+src/nakazy/tools/
+__pycache__/
+*.pyc
