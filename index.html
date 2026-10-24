@@ -128,6 +128,9 @@
   .xmonths input { width:auto; margin:0; }
   dialog::backdrop { background:rgba(10,14,25,.55); }
   .dlg-head { padding:16px 22px; border-bottom:1px solid var(--line); font-weight:650; font-size:17px; }
+  .dlg-head .about { font-weight:400; font-size:13px; margin-left:8px; }
+  .dlg-head .about a { color:inherit; text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px; }
+  .dlg-head .about a:hover { color:var(--accent); text-decoration-color:currentColor; }
   .dlg-body { padding:18px 22px; display:grid; grid-template-columns:1fr 1fr; gap:14px; max-height:72vh; overflow:auto; }
   .dlg-body.one { grid-template-columns:1fr; }
   .dlg-body .full { grid-column:1 / -1; }
@@ -516,7 +519,7 @@
 
 <!-- Довідка -->
 <dialog id="dlgHelp" class="wide">
-  <div class="dlg-head">Довідка <span class="muted" id="helpVer" style="font-weight:400;font-size:13px"></span></div>
+  <div class="dlg-head">Довідка <span class="muted about" id="helpVer"></span></div>
   <div class="tabs" id="helpTabs"></div>
   <div class="dir-wrap helptext" id="helpBody"></div>
   <div class="dlg-foot"><span class="spacer"></span><button type="button" class="btn" data-close="dlgHelp">Закрити</button></div>
@@ -1563,7 +1566,10 @@ $('#btnDensity').onclick = () => { COMPACT = !COMPACT; applyDensity(COMPACT); tr
 let HELP = null, helpTab = 'all';
 async function openHelp() {
   HELP = await api('/api/help');
-  $('#helpVer').textContent = 'версія ' + HELP.version;
+  const REPO = 'https://github.com/edu-portal-ck/portal_nakazy';
+  $('#helpVer').innerHTML = `Реєстр наказів ${esc(HELP.version)} © 2026 Rogala · `
+    + `<a href="${REPO}/blob/main/LICENSE" target="_blank" rel="noopener">AGPL‑3.0</a> · `
+    + `<a href="${REPO}" target="_blank" rel="noopener">вихідний код</a>`;
   // за замовчуванням відкриваємо розділ, що найбільше відповідає ролі
   helpTab = ME ? (ME.is_admin ? 'all' : (ME.is_secretary ? 'sec' : (ME.is_hr ? 'hr' : 'all'))) : 'all';
   if (!HELP.sections.some(x => x.id === helpTab)) helpTab = 'all';
