@@ -7,6 +7,23 @@
 Готовий архів — у розділі **[Releases](https://github.com/edu-portal-ck/portal_nakazy/releases/latest)** (файл `nakazy.zip`).
 Встановлення на сервер Debian/Ubuntu крок за кроком — [INSTALL.md](src/nakazy/INSTALL.md).
 
+## Встановлення з репозиторію (git clone)
+
+Замість архіву можна клонувати репозиторій — програма лежить у папці `src/nakazy`:
+
+```bash
+cd /opt && git clone https://github.com/edu-portal-ck/portal_nakazy.git
+cd /opt/portal_nakazy/src/nakazy && ./install.sh
+```
+
+Оновлення:
+
+```bash
+cd /opt/portal_nakazy && git pull && cd src/nakazy && ./update.sh
+```
+
+У гілці `main` може бути код, над яким ще йде робота; перевірені версії — у [Releases](https://github.com/edu-portal-ck/portal_nakazy/releases). В інструкціях шлях `/opt/nakazy` для такої установки читайте як `/opt/portal_nakazy/src/nakazy`. Дані (`data/`, `.env`) лежать у тій самій папці й `git pull` їх не чіпає.
+
 ## Документація
 
 - Повний опис можливостей і налаштувань: [src/nakazy/README.md](src/nakazy/README.md)
