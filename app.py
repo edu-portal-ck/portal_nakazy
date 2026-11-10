@@ -17,6 +17,7 @@ import io
 import os
 import re
 import shutil
+import signal
 import sqlite3
 import subprocess
 import sys
@@ -24,7 +25,6 @@ import tempfile
 import threading
 import time
 import uuid
-from functools import wraps
 
 from flask import (Flask, Response, abort, g, jsonify, request, send_file,
                    send_from_directory, session)
@@ -422,7 +422,10 @@ migrate()
 
 # ---------------------------------------------------------------- Помилки (JSON для /api)
 MESSAGES = {401: "Потрібен вхід у систему", 403: "Недостатньо прав для цієї дії",
-            404: "Не знайдено", 413: "Файл завеликий (перевищено ліміт розміру завантаження)",
+            400: "Невірний запит", 404: "Не знайдено", 405: "Ця дія не підтримується",
+            500: "Внутрішня помилка програми. Спробуйте ще раз; якщо повторюється — покажіть адміністратору "
+                 "журнал (docker compose logs --tail 50)",
+            413: "Файл завеликий (перевищено ліміт розміру завантаження)",
             415: "Перегляд цього формату недоступний"}
 
 
@@ -467,6 +470,21 @@ def require_admin():
     if not u["is_admin"]:
         abort(403)
     return u
+
+
+MUST_CHANGE_OK = {"/api/login", "/api/logout", "/api/password", "/api/checks/seen"}
+
+
+@app.before_request
+def initial_password_first():
+    """Поки початковий пароль не змінено, змінювати дані не можна (перегляд і зміна пароля працюють)."""
+    if (request.method in ("GET", "HEAD", "OPTIONS") or not request.path.startswith("/api/")
+            or request.path in MUST_CHANGE_OK):
+        return None
+    u = current_user()
+    if u and u["must_change"]:
+        return jsonify(error="Спершу змініть початковий пароль: меню з вашим ім'ям угорі праворуч → «Змінити пароль»"), 403
+    return None
 
 
 def regs():
@@ -591,9 +609,11 @@ def login():
     ok = (row and row["password_hash"] and (row["is_admin"] or row["is_secretary"] or row["is_hr"] or row["is_viewer"])
           and check_password_hash(row["password_hash"], pw))
     if not ok:
+        if not row:   # такого запису немає — лічильник не ведемо, щоб вигаданими id не засмічувати пам'ять
+            return jsonify(error="Невірний пароль"), 401
         cnt += 1
         FAILS[eid] = (0, time.time() + 120) if cnt >= 8 else (cnt, 0)
-        if cnt >= 8 and row:
+        if cnt >= 8:
             audit(get_db(), "lock", details="8 невдалих спроб входу — вхід заблоковано на 2 хв",
                   user={"id": row["id"], "name": row["name"]})
         return jsonify(error="Невірний пароль"), 401
@@ -686,6 +706,8 @@ def serialize(row, cmap, user, fmap=None, lmaps=None):
                              "signer_id", "signer_name", "created_at", "updated_at")}
     d["creators"] = cmap.get(row["id"], [])
     d["files"] = (fmap or {}).get(row["id"], [])
+    if not can_open_files(user):   # без входу в режимі «Без сканів»: видно, що скан є, але не назву файлу
+        d["files"] = [{"id": f["id"], "ext": f["ext"], "name": ""} for f in d["files"]]
     d["has_file"] = bool(d["files"])
     out, inc = lmaps or ({}, {})
     d["links"] = out.get(row["id"], [])
@@ -942,6 +964,7 @@ DIRECT_EXT = {".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".txt"} 
 SAFE_MIME = {".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
              ".gif": "image/gif", ".webp": "image/webp", ".bmp": "image/bmp", ".txt": "text/plain"}
 _convert_lock = threading.Lock()
+CONVERT_TIMEOUT = 120   # секунд на перетворення одного документа
 _LO_PROFILE = os.path.join(tempfile.gettempdir(), "nakazy_lo_profile")
 
 
@@ -978,10 +1001,20 @@ def convert_pdf(src, ext, out):
             # для таблиць кожен аркуш — на одній сторінці, щоб широкі таблиці не розрізались
             target = ('pdf:calc_pdf_Export:{"SinglePageSheets":{"type":"boolean","value":"true"}}'
                       if ext in CALC_EXT else "pdf")
-            subprocess.run([exe, "--headless", "--norestore", "--nolockcheck",
-                            "-env:UserInstallation=file://" + _LO_PROFILE,
-                            "--convert-to", target, "--outdir", tmp, work],
-                           timeout=120, capture_output=True)
+            # окрема група процесів: soffice запускає soffice.bin, і при перевищенні часу треба зупинити обох,
+            # інакше завислий soffice.bin блокував би всі наступні перегляди до перезапуску програми
+            proc = subprocess.Popen([exe, "--headless", "--norestore", "--nolockcheck",
+                                     "-env:UserInstallation=file://" + _LO_PROFILE,
+                                     "--convert-to", target, "--outdir", tmp, work],
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            try:
+                proc.wait(timeout=CONVERT_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except (AttributeError, OSError):   # не Linux (лише для розробки) або процес уже завершився
+                    proc.kill()
+                proc.wait(timeout=10)
             pdf = os.path.join(tmp, "doc.pdf")
             if os.path.exists(pdf):
                 os.replace(pdf, out)
@@ -1143,11 +1176,12 @@ def update_order(oid):
     number = data["number"] or old["number"]
     if number != old["number"]:     # старі номери не чіпаємо, суфікс лише для нововписаного
         number = with_suffix(old["type"], number)
-    if duplicate_exists(db, old["type"], year, number, oid):
-        return jsonify(error=f"Наказ № {number} за {year} рік у цьому реєстрі вже існує"), 409
     db.execute("BEGIN IMMEDIATE")
     to_delete, saved = [], []
     try:
+        if duplicate_exists(db, old["type"], year, number, oid):
+            db.execute("ROLLBACK")
+            return jsonify(error=f"Наказ № {number} за {year} рік у цьому реєстрі вже існує"), 409
         before = snapshot(db, oid)
         db.execute(
             "UPDATE orders SET year=?, seq=?, number=?, date=?, title=?, status=?,"
@@ -1337,12 +1371,13 @@ def restore_order(db, row):
     oid = row["id"]
     if row["type"] not in regs():
         return jsonify(error="Реєстру цього наказу вже немає"), 409
-    dup = duplicate_exists(db, row["type"], row["year"], row["number"], oid)
-    if dup:
-        return jsonify(error=f"Номер {row['number']} за {row['year']} рік уже зайняв інший наказ "
-                             f"(від {fmt_d(dup['date'])}). Змініть номер того наказу, потім відновіть цей."), 409
     db.execute("BEGIN IMMEDIATE")
     try:
+        dup = duplicate_exists(db, row["type"], row["year"], row["number"], oid)
+        if dup:
+            db.execute("ROLLBACK")
+            return jsonify(error=f"Номер {row['number']} за {row['year']} рік уже зайняв інший наказ "
+                                 f"(від {fmt_d(dup['date'])}). Змініть номер того наказу, потім відновіть цей."), 409
         db.execute("UPDATE orders SET deleted_at=NULL, deleted_by=NULL WHERE id=?", (oid,))
         audit(db, "restore", row, "Відновлено з кошика")
         db.execute("COMMIT")
@@ -1445,9 +1480,14 @@ def image_page(src, name):
 ARCH_EXT = {".zip", ".7z", ".rar", ".tar", ".tgz", ".gz"}
 ARCH_MAX_FILE = 300 * 1024 ** 2   # більший файл з архіву не розпаковуємо для перегляду
 ARCH_MAX_LIST = 5000
+ARCH_CACHE_MAX = 2 * 1024 ** 3    # розпаковані для перегляду файли з архівів: разом не більше 2 ГБ на диску
 
 
 class ArchiveError(Exception):
+    pass
+
+
+class ArchiveTooBig(ArchiveError):
     pass
 
 
@@ -1523,13 +1563,28 @@ def arch_entries(path, ext):
                            else "Не вдалося прочитати архів (можливо, пошкоджений)")
 
 
-def arch_read(path, ext, n):
-    """Вміст n-го файлу архіву (bytes)."""
+def _copy_limited(src, dst):
+    """Пише потік src у файл dst частинами (у пам'яті файл не тримаємо); більше за ARCH_MAX_FILE — ArchiveTooBig."""
+    total = 0
+    with open(dst, "wb") as out:
+        while True:
+            block = src.read(1024 * 1024)
+            if not block:
+                return
+            total += len(block)
+            if total > ARCH_MAX_FILE:
+                raise ArchiveTooBig()
+            out.write(block)
+
+
+def arch_extract(path, ext, n, dst):
+    """Розпаковує n-й файл архіву у файл dst."""
     try:
         if ext == ".zip":
             import zipfile
-            with zipfile.ZipFile(path) as z:
-                return z.open(z.infolist()[n]).read(ARCH_MAX_FILE + 1)
+            with zipfile.ZipFile(path) as z, z.open(z.infolist()[n]) as src:
+                _copy_limited(src, dst)
+            return
         if ext == ".7z":
             import py7zr
             with py7zr.SevenZipFile(path) as z:
@@ -1546,30 +1601,59 @@ def arch_read(path, ext, n):
                 f = os.path.normpath(os.path.join(tmp, name))
                 if os.path.commonpath([f, tmp]) != os.path.normpath(tmp):
                     raise ArchiveError("Недопустима назва файлу в архіві")
-                with open(f, "rb") as fh:
-                    return fh.read(ARCH_MAX_FILE + 1)
+                if os.path.islink(f) or not os.path.isfile(f):   # посилання з архіву не відкриваємо — лише звичайний файл
+                    raise ArchiveError("Цей запис архіву не є звичайним файлом")
+                if os.path.getsize(f) > ARCH_MAX_FILE:
+                    raise ArchiveTooBig()
+                os.replace(f, dst)
             finally:
                 shutil.rmtree(tmp, ignore_errors=True)
+            return
         if ext == ".rar":
             libarchive = _libarchive()
             with libarchive.file_reader(path) as a:
                 for i, e in enumerate(a):
                     if i == n:
-                        data = bytearray()
-                        for block in e.get_blocks():
-                            data += block
-                            if len(data) > ARCH_MAX_FILE:
-                                break
-                        return bytes(data)
+                        total = 0
+                        with open(dst, "wb") as out:
+                            for block in e.get_blocks():
+                                total += len(block)
+                                if total > ARCH_MAX_FILE:
+                                    raise ArchiveTooBig()
+                                out.write(block)
+                        return
             raise ArchiveError("Файл в архіві не знайдено")
         import tarfile
         with tarfile.open(path) as t:
             members = [m for m in t.getmembers() if m.isfile() or m.isdir()]
-            return t.extractfile(members[n]).read(ARCH_MAX_FILE + 1)
+            with t.extractfile(members[n]) as src:
+                _copy_limited(src, dst)
     except ArchiveError:
         raise
     except Exception:
         raise ArchiveError("Не вдалося розпакувати файл з архіву")
+
+
+def trim_arch_cache():
+    """Розпаковані для перегляду файли з архівів (і їхні PDF) разом займають не більше ARCH_CACHE_MAX:
+    найдавніші видаляються — за потреби вони розпакуються знову."""
+    try:
+        files = []
+        for e in os.scandir(PREVIEWS):
+            if e.is_file() and re.search(r"__\d+(\.[a-z0-9]+)?(\.pdf)?$", e.name):
+                st = e.stat()
+                files.append((st.st_mtime, st.st_size, e.path))
+    except OSError:
+        return
+    total = sum(f[1] for f in files)
+    for _, size, p in sorted(files):
+        if total <= ARCH_CACHE_MAX:
+            break
+        try:
+            os.remove(p)
+            total -= size
+        except OSError:
+            pass
 
 
 def human_size(n):
@@ -1639,12 +1723,17 @@ def archive_entry(fid):
         # розпакований файл кешується поряд із PDF-переглядами (видаляється разом з архівом)
         cached = os.path.join(PREVIEWS, f"{os.path.basename(row['stored'])}__{n}{re.sub(r'[^a-z0-9.]', '', iext)[:10]}")
         if not (os.path.exists(cached) and os.path.getmtime(cached) >= os.path.getmtime(path)):
-            data = arch_read(path, ext, n)
-            if len(data) > ARCH_MAX_FILE:
-                return Response("Файл завеликий для перегляду — завантажте архів цілком.", 413, mimetype="text/plain")
-            with open(cached + ".tmp", "wb") as f:
-                f.write(data)
-            os.replace(cached + ".tmp", cached)
+            part = f"{cached}.{uuid.uuid4().hex}.tmp"   # своє ім'я на кожен запит: два одночасні перегляди не заважають
+            try:
+                arch_extract(path, ext, n, part)
+                os.utime(part, None)   # час — «зараз» (7Z ставить час з архіву, і кеш вважався б застарілим)
+                os.replace(part, cached)
+            finally:
+                if os.path.exists(part):
+                    os.remove(part)
+            trim_arch_cache()
+    except ArchiveTooBig:
+        return Response("Файл завеликий для перегляду — завантажте архів цілком.", 413, mimetype="text/plain")
     except ArchiveError as e:
         return Response(f"{e}. Завантажте архів кнопкою «⬇».", 422, mimetype="text/plain")
     base = os.path.basename(name.rstrip("/")) or "file"
@@ -2396,8 +2485,8 @@ def export_xlsx():
         from openpyxl.utils import get_column_letter
     except ImportError:
         return jsonify(error="Не встановлено openpyxl"), 500
-    heads = ["Номер", "Дата", "Назва", "Хто створив", "Хто підписав", "Статус"] + ([] if is_hr else ["Зв'язки"])
-    widths = [14, 12, 70, 28, 28, 14] + ([] if is_hr else [34])
+    heads = ["Номер", "Дата", "Назва", "Хто створив", "Хто підписав", "Статус", "Зв'язки"]
+    widths = [14, 12, 70, 28, 28, 14, 34]
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     by_year = {}
@@ -2417,8 +2506,7 @@ def export_xlsx():
             line = [r["number"], d, r["title"], "; ".join(c["name"] for c in cmap.get(r["id"], [])),
                     r["signer_name"] or ""]
             line.append(status_text(r, lmaps))
-            if not is_hr:
-                line.append(links_text(r["id"], lmaps))
+            line.append(links_text(r["id"], lmaps))
             ws.append(line)
         for i, w in enumerate(widths, 1):
             ws.column_dimensions[get_column_letter(i)].width = w
@@ -2508,10 +2596,17 @@ def guess_type(value, default):
     s = norm(value).casefold()
     if not s:
         return default
-    for key, r in regs().items():
-        short = r["short"].casefold()
-        if s == key.casefold() or short in s or (len(s) >= 3 and s in short):
+    items = [(key, r["short"].casefold()) for key, r in regs().items()]
+    for key, short in items:            # точний збіг: ключ або назва вкладки
+        if s == key.casefold() or s == short:
             return key
+    inside = [(key, short) for key, short in items if short and short in s]
+    if inside:                          # назва вкладки всередині значення: найдовша точніша («Кадрові відпустки», а не «Кадрові»)
+        return max(inside, key=lambda x: len(x[1]))[0]
+    if len(s) >= 3:
+        for key, short in items:        # значення — частина назви вкладки
+            if s in short:
+                return key
     if "основ" in s:
         return next((k for k, r in regs().items() if r["kind"] == "main"), default)
     if "кадр" in s or "особов" in s or "персонал" in s:

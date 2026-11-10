@@ -11,7 +11,7 @@ services:
       CA_URL: http://caddy:8081/root.crt
 
   caddy:
-    image: caddy:2.8
+    image: caddy:${CADDY_VERSION:-2.8}   # іншу версію можна задати в .env: CADDY_VERSION=2
     container_name: nakazy-caddy
     restart: unless-stopped
     depends_on:

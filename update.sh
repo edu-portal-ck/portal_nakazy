@@ -32,6 +32,10 @@ fi
 # спершу збірка: програма в цей час працює далі, тож сайт не простоює, поки завантажуються пакети
 echo "1/4 Збірка нової версії (програма поки працює)"
 docker compose build || { echo "Помилка збірки. Нічого не змінено, працює попередня версія."; exit 1; }
+# HTTPS: свіжий образ Caddy в межах заданої версії (без інтернету — пропускаємо, працюватиме наявний)
+case "${COMPOSE_FILE:-}" in *https*)
+  docker compose pull -q caddy >/dev/null 2>&1 || echo "   (Caddy не оновлено: немає доступу до інтернету — лишається наявний образ)" ;;
+esac
 
 echo "2/4 Копія даних -> backups/data_$STAMP"
 # коротка зупинка, щоб копія бази була узгодженою (без записів під час копіювання)
@@ -57,6 +61,10 @@ if [ "$OK" -eq 1 ]; then
   echo "Готово: програма працює. Копія даних: backups/data_$STAMP"
   # зберігаємо лише 7 останніх копій
   ls -dt backups/data_* 2>/dev/null | tail -n +8 | xargs -r rm -rf
+  # старі образи цієї програми, що лишилися без імені після збірок (кожен понад 1 ГБ), прибираємо;
+  # поточний і попередній (:prev, для відкату) мають імена й зберігаються; образи інших програм не зачіпаються
+  PROJ=$(docker compose config 2>/dev/null | sed -n 's/^name: *//p' | head -1)
+  [ -n "$PROJ" ] && docker image prune -f --filter "label=com.docker.compose.project=$PROJ" >/dev/null 2>&1
   # копію в хмару, налаштовану старішою версією (фіксований час), переводимо на керування з програми
   if [ -f /etc/systemd/system/nakazy-backup.service ] && ! grep -q -- "--auto" /etc/systemd/system/nakazy-backup.service; then
     ./backup_gdrive.sh --timer >/dev/null 2>&1 && echo "Копія в хмару: час тепер задається в програмі (Адміністрування → Налаштування)"
