@@ -1329,7 +1329,7 @@ function renderDir() {
         <td style="white-space:nowrap"><button class="btn small" data-save>Зберегти</button> <button class="btn small danger" data-del title="${e.used ? 'Використовується в наказах: ' + e.used : 'Видалити'}">✕</button><div class="row-err"></div></td></tr>`).join('')}
       </tbody></table>`;
   } else if (dirTab === 'reg') {
-    $('#dirHint').textContent = 'Номер наказу = порядковий номер у межах реєстру й року + суфікс (напр. 12-к). Основний реєстр бачать усі, кадрові — лише авторизовані.';
+    $('#dirHint').textContent = 'Номер наказу = порядковий номер у межах реєстру й року + суфікс (напр. 12-к). Основні реєстри без входу видно залежно від налаштування доступу, кадрові — лише після входу.';
     const kindName = k => k === 'main' ? 'Основний' : 'Кадровий';
     body.innerHTML = `<table class="dir reg"><thead><tr><th>Вкладка</th><th>Повна назва (заголовок сторінки)</th><th>Суфікс</th><th>Вид</th><th class="c">Наказів</th><th></th></tr></thead><tbody>
       <tr class="new" data-id="new"><td><input type="text" data-f="short" placeholder="Коротка назва"></td>
