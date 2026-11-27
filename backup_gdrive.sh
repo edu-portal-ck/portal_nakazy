@@ -79,11 +79,11 @@ backup() {
   rclone copyto "$tmp" "$(rp "db/orders_$TODAY.db")" || { rm -f "$tmp"; fail "не вдалося вивантажити базу"; }
   rm -f "$tmp"
   echo "2/4 Скани (перший раз довго, далі — лише нові)"
-  rclone sync data/uploads "$(rp uploads)" --backup-dir "$(rp "deleted/$TODAY")" --transfers 4 \
+  rclone sync data/uploads "$(rp uploads)" --backup-dir "$(rp "deleted/$TODAY")" --transfers 4 --fast-list \
     || fail "не вдалося вивантажити скани"
   echo "3/4 Налаштування й сертифікати"
   [ -f .env ] && { rclone copyto .env "$(rp config/env)" || fail "не вдалося вивантажити .env"; }
-  [ -d caddy/data ] && { rclone sync caddy/data "$(rp config/caddy)" || fail "не вдалося вивантажити caddy/data"; }
+  [ -d caddy/data ] && { rclone sync caddy/data "$(rp config/caddy)" --fast-list || fail "не вдалося вивантажити caddy/data"; }
   echo "4/4 Прибирання копій, старших за $KEEP днів"
   local cut f d
   cut=$(date -d "-$KEEP days" +%F)
@@ -158,7 +158,7 @@ restore() {
   echo "1/3 База"
   rclone copyto "$(rp "db/orders_$want.db")" data/orders.db || undo "не вдалося завантажити базу"
   echo "2/3 Скани"
-  rclone copy "$(rp uploads)" data/uploads --transfers 4 || undo "не вдалося завантажити скани"
+  rclone copy "$(rp uploads)" data/uploads --transfers 4 --fast-list || undo "не вдалося завантажити скани"
   [ -n "$old" ] && [ -f "$old/secret.key" ] && cp -a "$old/secret.key" data/   # щоб користувачам не входити заново
   echo "3/3 Налаштування"
   # .env з копії — якщо тут його немає або це щойно створений install.sh (лише пароль початкового адміністратора)
@@ -170,7 +170,7 @@ restore() {
       && echo "  тут уже є свій .env — його не змінено; .env з копії збережено як .env.from_backup"
   fi
   if [ ! -d caddy/data ] && rclone lsf "$(rp config/caddy)" 2>/dev/null | grep -q .; then
-    mkdir -p caddy/data && rclone copy "$(rp config/caddy)" caddy/data && echo "  сертифікати HTTPS відновлено з хмари"
+    mkdir -p caddy/data && rclone copy "$(rp config/caddy)" caddy/data --fast-list && echo "  сертифікати HTTPS відновлено з хмари"
   fi
   # запускаємо з налаштуваннями відновленого .env (COMPOSE_FILE міг змінитися)
   unset COMPOSE_FILE SITE_ADDRESS HTTPS_PORT CADDY_TLS HTTP_PORT
